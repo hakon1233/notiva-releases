@@ -25,6 +25,8 @@ Bug tracking lives in `.claude/bugs/` — agents report issues there automatical
 | Spec check | After significant changes | `.claude/skills/spec-check/SKILL.md` |
 | Deploy verify | After deploying | `.claude/skills/deploy-verify/SKILL.md` |
 | Safety review | Touching async/state code | `.claude/skills/safety-review/SKILL.md` |
+| Test impact | Before committing changes | `.claude/skills/test-impact/SKILL.md` |
+| Workflow mgmt | Discovering critical user flows | `.claude/skills/workflow-management/SKILL.md` |
 
 Bug tracking lives in `.claude/bugs/`. Document decisions in `docs/decisions/`.
 
