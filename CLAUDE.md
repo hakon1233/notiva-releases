@@ -14,3 +14,16 @@ Every Claude Code session in this repo must maintain a continuous session log.
 Run `/fix-loop` to start automated testing. Configure workflows in `.claude/workflows.md`.
 
 Bug tracking lives in `.claude/bugs/` — agents report issues there automatically during the fix loop.
+
+## Skills (loaded automatically based on context)
+
+| Skill | When to use | Path |
+|-------|-------------|------|
+| Fix loop | Testing and fixing bugs | `.claude/skills/fix-loop/SKILL.md` |
+| Test-first | Fixing any bug | `.claude/skills/test-first/SKILL.md` |
+| Refactor plan | Before refactoring code | `.claude/skills/refactor-plan/SKILL.md` |
+| Spec check | After significant changes | `.claude/skills/spec-check/SKILL.md` |
+| Deploy verify | After deploying | `.claude/skills/deploy-verify/SKILL.md` |
+| Safety review | Touching async/state code | `.claude/skills/safety-review/SKILL.md` |
+
+Bug tracking lives in `.claude/bugs/`. Document decisions in `docs/decisions/`.
