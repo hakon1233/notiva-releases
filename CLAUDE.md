@@ -27,3 +27,13 @@ Bug tracking lives in `.claude/bugs/` — agents report issues there automatical
 | Safety review | Touching async/state code | `.claude/skills/safety-review/SKILL.md` |
 
 Bug tracking lives in `.claude/bugs/`. Document decisions in `docs/decisions/`.
+
+
+## Workflows
+
+Workflows define the critical user flows that must always work. They connect testing, bug tracking, and documentation.
+
+- **Definitions:** `.claude/workflows.md` (what to test and how)
+- **Behavioral specs:** `docs/system/<workflow-name>.md` (what should happen — synced to vault)
+- **Bug tracking:** `.claude/bugs/workflows/<name>.md` (issues per workflow)
+- **How it all fits:** `docs/system/how-the-system-works.md`
