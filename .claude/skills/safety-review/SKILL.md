@@ -3,6 +3,12 @@ name: safety-review
 description: Review code for async safety, race conditions, and state corruption.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Runtime Safety Review
 
 When reviewing or writing code that involves async operations, shared state, or concurrency:

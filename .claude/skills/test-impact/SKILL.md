@@ -3,6 +3,12 @@ name: test-impact
 description: Check which tests are affected by code changes before committing.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Test Impact Analysis
 
 When you modify code, check which tests might be affected before committing.

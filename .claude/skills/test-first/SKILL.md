@@ -3,6 +3,12 @@ name: test-first
 description: Red-before-green bug fixing — write a failing test first, then fix.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Test-First Bug Fixing
 
 When fixing any bug, follow this discipline:

@@ -3,6 +3,12 @@ name: deploy-verify
 description: Post-deployment health checks and smoke tests.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Deploy Verification
 
 After deploying changes, verify the deployment is healthy.

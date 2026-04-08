@@ -3,6 +3,12 @@ name: fix-loop
 description: Automated test-fix-verify loop. Tests project workflows, fixes obvious bugs, tracks issues, and reports uncertain items for user review.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Fix Loop
 
 Automated test → triage → fix → deploy → verify cycle for any project. Reads workflow definitions from `.claude/workflows.md` and tracks bugs in `.claude/bugs/`.
@@ -133,6 +139,8 @@ When the loop ends, produce:
 ### Regression status:
 - N previously fixed bugs checked, N still fixed, N regressed
 ```
+
+**After producing the report**, append it to `docs/sessions/$(date +%Y-%m-%d).md` as the work log for this session. Include the list of files changed.
 
 ## Bug entry format
 

@@ -3,6 +3,12 @@ name: workflow-management
 description: Discover, create, and maintain workflow definitions. Use when you notice repeating user flows or critical paths that should be tested.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Workflow Management
 
 Workflows are the central piece connecting testing, bug tracking, and documentation. This skill helps you discover, create, and maintain them.

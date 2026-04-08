@@ -3,6 +3,12 @@ name: refactor-plan
 description: Structured refactoring approach that preserves behavior and public APIs.
 ---
 
+## Before you start
+
+1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
+2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
+3. Log your work continuously as you go — do not wait until the end
+
 # Refactor Plan
 
 Before changing any code, produce a plan that covers:
