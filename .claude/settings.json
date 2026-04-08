@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f docs/sessions/$(date +%Y-%m-%d).md || (echo 'SESSION LOG MISSING: Create docs/sessions/'$(date +%Y-%m-%d)'.md before committing. See CLAUDE.md for format.' && exit 1)"
+          }
+        ]
+      }
+    ]
+  }
+}
