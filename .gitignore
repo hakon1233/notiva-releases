@@ -1,0 +1,33 @@
+# --- Node / TypeScript ---
+node_modules/
+dist/
+build/
+coverage/
+.next/
+out/
+*.tsbuildinfo
+
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+*.pem
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editor ---
+.vscode/*.local.json
+.idea/
+*.swp
+*.swo
+
+# --- AI tool artifacts (local, per-dev) ---
+.cursor/
+.aider*
+.claude/settings.local.json
+# Per-run test-run artifacts are local/ephemeral, but reproducer scripts are persistent.
+.claude/test-runs/*
+!.claude/test-runs/reproducers
+!.claude/test-runs/reproducers/**
