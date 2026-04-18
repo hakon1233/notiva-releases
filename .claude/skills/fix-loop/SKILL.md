@@ -1,174 +1,87 @@
 ---
 name: fix-loop
-description: Automated test-fix-verify loop. Tests project workflows, fixes obvious bugs, tracks issues, and reports uncertain items for user review.
+description: Use PROACTIVELY when the user says "fix loop", "run the fix loop", "test the X workflow", or when /fix-loop is invoked. MUST BE USED for workflow-scoped test/fix/verify runs. Owns iteration bookkeeping and stop conditions; delegates bug-fix rhythm to `test-first` and workflow creation to `workflow-management`.
+last_updated: 2026-04-18
 ---
-
-## Before you start
-
-1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
-2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
-3. Log your work continuously as you go — do not wait until the end
 
 # Fix Loop
 
-Automated test → triage → fix → deploy → verify cycle for any project. Reads workflow definitions from `.claude/workflows.md` and tracks bugs in `.claude/bugs/`.
+Run a workflow-first fix loop for a single workflow at a time.
+
+## Delegations (read these first)
+
+- **`.claude/skills/session-logging/SKILL.md`** — session-log discipline (auto-loads; no duplication here).
+- **`.claude/skills/workflow-management/SKILL.md`** — how to create the four workflow files if they're missing. Don't invent the layout here.
+- **`.claude/skills/test-first/SKILL.md`** — red-before-green rhythm for every fix. Not restated here.
+
+## Scope rule
+
+- Work on exactly one workflow: the workflow the user named
+- Do not broaden scope to similar or related workflows unless the user explicitly asks
+- An empty per-workflow bug file does not mean the workflow is clean; always read the root bug files too
+- If you discover a bug during this run that clearly also affects another workflow, still log it from this run, but do not expand the fix scope to that other workflow unless the user explicitly asks
+
+## First reply before coding
+
+Before you make changes, give a short report that states:
+- the exact workflow you will work on
+- which files are the loop state for that workflow
+- whether workflow artifacts already exist or must be created
+- that you will use root bug files + the per-workflow bug file together
+- that you will run only workflow-relevant regression checks from `resolved.md`
+
+## Workflow setup
+
+If the requested workflow doesn't exist yet, follow `workflow-management/SKILL.md` to create the four artifacts (registry entry + spec + bug file + slug convention) before testing. Don't improvise the layout.
+
+The files that drive this loop:
+- `.claude/workflows.md` — how to exercise the workflow (test plan).
+- `docs/system/<workflow-id>.md` — what correct behavior should be (spec).
+- `.claude/bugs/{agent-reported,user-reported}.md` — open issues across the repo.
+- `.claude/bugs/workflows/<workflow-id>.md` — workflow-local view of the same issues.
+- `.claude/bugs/resolved.md` — only the resolved bugs relevant for this workflow get regression-checked.
 
 ## Pre-flight
 
-Before starting the loop:
+Read these before the first iteration:
+- `.claude/workflows.md`
+- `docs/system/<workflow-id>.md`
+- `.claude/bugs/agent-reported.md`
+- `.claude/bugs/user-reported.md`
+- `.claude/bugs/resolved.md`
+- `.claude/bugs/workflows/<workflow-id>.md`
 
-1. **Read the bug tracking system:**
-   - `.claude/bugs/resolved.md` — previously fixed bugs with regression checks
-   - `.claude/bugs/agent-reported.md` — known open bugs
-   - `.claude/bugs/user-reported.md` — user-reported issues
-   - `.claude/bugs/workflows/*.md` — per-workflow status
+Treat open user-reported bugs for the workflow as required work.
+If the root bug files and the per-workflow file disagree, do not guess; reconcile them explicitly.
 
-2. **Read workflow definitions:**
-   - `.claude/workflows.md` — what to test and how
+## Loop
 
-3. **Check system readiness:**
-   - Run each workflow's verification command (if defined) to get a baseline
-   - Verify any required services are running
-   - Verify any required URLs are reachable
+Repeat up to 5 iterations:
 
-4. **Note the current state:**
-   - `git log --oneline -1` — current commit
-   - `git status` — any uncommitted changes
+1. Run the workflow checks from `.claude/workflows.md` for this workflow only
+2. Run only the regression checks from `resolved.md` that belong to this workflow or clearly cover the same behavior
+3. Triage findings into:
+   - sure-fix
+   - regression
+   - already-known
+   - needs-user-input
+4. **For each sure-fix or regression, follow `.claude/skills/test-first/SKILL.md` Steps 0-6 for the full bug-fix rhythm.** That skill owns red-before-green, reproducer file conventions, the layered regression defense, cross-file bug tracking, restart discipline, and commit rules. This loop owns workflow selection and stop conditions — not the bug-fix rhythm. Do not duplicate test-first's content here; read and follow it.
+5. Stop when no sure-fix issues remain and only `needs-user-input` items are left
 
-## The Loop
+## Bug handling rules
 
-Repeat until done (max 5 iterations, or fewer if nothing left to fix):
-
-### Phase 1: Test
-
-For each workflow in `.claude/workflows.md`, launch a subagent with the appropriate test method:
-
-#### chrome-mcp workflows
-- Create a tab, navigate to the workflow's URL
-- Execute the test actions described in the workflow
-- Screenshot at key moments
-- Check browser console for errors via `read_console_messages` with pattern `error|Error|ERR`
-- Report what worked and what failed
-
-#### playwright workflows
-- Run playwright tests or use the playwright CLI
-- Capture screenshots and trace files
-- Report failures with error details
-
-#### curl workflows
-- Execute each curl command
-- Check response status codes and bodies
-- Compare against expected behavior
-
-#### bash workflows
-- Run each bash command
-- Check process state, log files, file contents
-- Look for errors, warnings, stuck processes
-
-#### test-suite workflows
-- Run the specified test command
-- Report failures with file paths and error messages
-
-#### Regression checks
-- Read `.claude/bugs/resolved.md`
-- For each resolved bug, run its regression check
-- Flag any regressions as CRITICAL
-
-### Phase 2: Triage
-
-Categorize each finding:
-
-| Category | Criteria | Action |
-|----------|----------|--------|
-| **Sure fix** | Obviously broken, clear root cause, safe to fix | Fix it |
-| **Needs user input** | Unclear intent, risky change, design decision | Log for user |
-| **Regression** | Previously fixed bug reappeared | Fix immediately (CRITICAL) |
-| **Already known** | Matches an open bug in the tracking system | Update status |
-| **Working** | Expected behavior confirmed | Note as verified |
-
-### Phase 3: Fix
-
-For each "sure fix" and "regression":
-
-1. Implement the fix (directly or via subagent)
-2. Run the project's verification command (from the workflow definition or `npm run verify:changed` or `npm test`)
-3. Update bug tracking files:
-   - Add new bugs to `.claude/bugs/agent-reported.md` and matching `workflows/*.md`
-   - Update status of fixed bugs to `fixing` → `fixed`
-   - Add fix details: commit hash, root cause, regression check
-
-### Phase 4: Deploy
-
-1. Commit changes with a descriptive message
-2. Push to the deploy branch
-3. Run any deploy commands defined in workflows (service restarts, builds, etc.)
-4. Wait for deploy to complete
-
-### Phase 5: Decide — continue or stop
-
-**Stop if:**
-- No new "sure fix" bugs were found in Phase 2
-- All regressions are resolved
-- Only "needs user input" items remain
-
-**Continue if:**
-- Fixes were deployed and need verification
-- New issues might have been introduced by fixes
-
-### Phase 6: Report
-
-When the loop ends, produce:
-
-```markdown
-## Fix Loop Results
-
-### Completed: N iterations
-
-### Fixed this run:
-- [BUG-XXX] Description → commit hash
-- [BUG-XXX] Description → commit hash
-
-### Needs your input:
-- Description — why it needs user decision
-- Description — why it needs user decision
-
-### Verified working:
-- Workflow A ✓
-- Workflow B ✓
-
-### Regression status:
-- N previously fixed bugs checked, N still fixed, N regressed
-```
-
-**After producing the report**, append it to `docs/sessions/$(date +%Y-%m-%d).md` as the work log for this session. Include the list of files changed.
-
-## Bug entry format
-
-When adding bugs to the tracking files, use:
-
-```markdown
-### [BUG-XXX] Short title
-- **Status:** open | fixing | fixed | wont-fix | needs-user-input
-- **Severity:** critical | warning | info
-- **Found:** YYYY-MM-DD by agent|user
-- **Fixed:** YYYY-MM-DD in commit <hash>
-- **Workflow:** workflow-name
-- **Description:** What's wrong
-- **Evidence:** Log output, error messages, or steps to reproduce
-- **Root cause:** Why it happens
-- **Fix:** What was done
-```
-
-When moving to `resolved.md`, add:
-```markdown
-- **Regression check:** How to verify this bug hasn't come back
-```
+- Every bug must link to the workflow
+- Keep root bug files and per-workflow bug file aligned
+- Do not treat the per-workflow bug file as the only source of truth
+- If a bug discovered in this workflow run also affects another workflow, log that cross-workflow impact explicitly, but keep the active fix loop scoped to the current workflow unless the user expands scope
+- Do not silently drop old bugs just because a new run passed
+- Resolved bugs must keep a regression check
+- If the user reports more bugs after review, add them to the bug files and run the loop again
 
 ## Guardrails
 
-- **Never skip verification** — run tests before committing
-- **Don't fix uncertain items** — log them for user review instead
-- **Sequential subagents for Chrome MCP** — parallel agents fight over shared tabs
-- **Rotate test targets** across iterations for broader coverage
-- **Update bug files** after every fix, not in batches at the end
-- **Stop after 5 iterations max** — if the loop hasn't converged, something deeper is wrong
+- Never claim a fix without red-to-green evidence
+- Do not refactor outside the workflow scope
+- Do not close uncertain items as fixed
+- Keep the loop focused on one workflow at a time
+- Stop after 5 iterations max

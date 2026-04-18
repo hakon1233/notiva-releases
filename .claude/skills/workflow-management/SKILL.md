@@ -1,46 +1,44 @@
 ---
 name: workflow-management
-description: Discover, create, and maintain workflow definitions. Use when you notice repeating user flows or critical paths that should be tested.
+description: Use PROACTIVELY when discovering, creating, renaming, or removing workflow definitions. MUST BE USED when adding a new user-facing flow that needs testing, or when the user asks for workflow changes. Owns the four-file workflow contract (registry + spec + bug file + fix-loop binding).
+last_updated: 2026-04-18
 ---
-
-## Before you start
-
-1. Check if `docs/sessions/$(date +%Y-%m-%d).md` exists
-2. If not, create it with a session header: `## Session — HH:MM` + `**Objective:** one-line summary`
-3. Log your work continuously as you go — do not wait until the end
 
 # Workflow Management
 
-Workflows are the central piece connecting testing, bug tracking, and documentation. This skill helps you discover, create, and maintain them.
+Workflows are the unit of testable user-facing behavior. Each workflow touches four files that together form one system; this skill owns the rules for creating, maintaining, and retiring them.
 
-## When to use
+## The four-file workflow contract
 
-- You notice a repeating user flow that's important
-- You're building a new feature and realize it needs a testable workflow
-- You're fixing a bug and there's no workflow covering that area
-- The user asks you to add a workflow
-- You're reviewing the project and see gaps in workflow coverage
+| Role | File | Owner skill |
+|---|---|---|
+| Registry (how to test) | `.claude/workflows.md` — one entry per workflow | this skill |
+| Behavioral spec (what it should do) | `docs/system/<workflow-name>.md` | this skill |
+| Bug tracker (per-workflow) | `.claude/bugs/workflows/<workflow-name>.md` | `test-first` + `fix-loop` |
+| Fix-loop rhythm | `.claude/skills/fix-loop/SKILL.md` | `fix-loop` |
 
-## Discovering workflows
+All four live inside the vault-synced allowlist (see `docs-governance`), so vault/Obsidian always sees the full state.
 
-Look for these signals that something should be a workflow:
+## When to create a workflow
 
-1. **User-facing flows** — sign up, log in, create/edit/delete content, checkout, upload
-2. **Integration points** — API calls, webhook handlers, third-party service interactions
-3. **Background processes** — job queues, scheduled tasks, sync operations
-4. **Admin operations** — user management, configuration, deployments
-5. **Critical paths** — anything where failure means the user can't complete their goal
+Signals that something should become a workflow:
 
-Ask yourself: "If this broke, would a user notice?" If yes, it needs a workflow.
+1. **User-facing flows** — sign up, log in, create/edit/delete, checkout, upload.
+2. **Integration points** — API calls, webhook handlers, third-party service interactions.
+3. **Background processes** — job queues, scheduled tasks, sync operations.
+4. **Admin operations** — user management, configuration, deployments.
+5. **Critical paths** — anything where failure means the user can't complete their goal.
 
-## Creating a workflow
+Rule of thumb: *if it broke, would a user notice?* If yes, it's a workflow.
 
-### Step 1: Add to .claude/workflows.md
+## Creating a workflow — three steps
+
+### 1. Add an entry to `.claude/workflows.md`
 
 ```markdown
-## workflow-name
+## <workflow-name>
 
-- **Description:** One line explaining what this does for the user
+- **Description:** One-line user-facing summary.
 - **Test methods:** chrome-mcp | playwright | curl | bash | test-suite
 - **URL:** (if browser-based)
 - **Steps:**
@@ -53,21 +51,19 @@ Ask yourself: "If this broke, would a user notice?" If yes, it needs a workflow.
   - No errors in console/logs
 - **Test actions:**
   - Specific commands or UI actions to exercise the flow
-- **Verification command:** `npm test` or `npm run test:specific`
-- **Baseline success:** What "passing" looks like in one sentence
-- **Skip if:** When this test isn't relevant
-- **Escalate if:** When to stop and ask the user
+- **Verification command:** `npm test` or a workflow-specific command
+- **Baseline success:** What "passing" looks like, one sentence
+- **Skip if:** When this test isn't relevant (e.g. "dev server not running")
+- **Escalate if:** When to stop and ask the user (e.g. "auth provider changed")
 ```
 
-### Step 2: Create behavioral spec in docs/system/
-
-Create `docs/system/<workflow-name>.md`:
+### 2. Create the behavioral spec at `docs/system/<workflow-name>.md`
 
 ```markdown
 # Workflow: <Name>
 
 ## What it does
-Describe the workflow from the user's perspective.
+Describe the flow from the user's perspective.
 
 ## Steps
 1. User does X
@@ -75,45 +71,58 @@ Describe the workflow from the user's perspective.
 3. User sees Z
 
 ## Rules
-- Rule 1 (e.g., "must complete within 5 seconds")
-- Rule 2 (e.g., "invalid input shows inline errors, doesn't clear form")
-- Rule 3 (e.g., "requires authentication")
+- Must complete within <time>
+- Invalid input shows inline errors, doesn't clear form
+- Requires authentication
 
 ## Edge cases
 - What happens with empty input?
 - What happens with very large input?
-- What happens if the service is down?
+- What happens if a dependency is down?
 
 ## Last verified
 YYYY-MM-DD — passed / failed (link to session log)
 ```
 
-### Step 3: Create workflow bug file
-
-Create `.claude/bugs/workflows/<workflow-name>.md`:
+### 3. Create the empty bug file at `.claude/bugs/workflows/<workflow-name>.md`
 
 ```markdown
 # Bugs: <workflow-name>
 
-Tracking file for bugs related to this workflow.
-Linked from `.claude/bugs/agent-reported.md` and `user-reported.md`.
+Per-workflow view of bugs. Entries also live in the root bug files
+(`.claude/bugs/{agent-reported,user-reported,resolved}.md`).
 
 *No bugs tracked yet.*
 ```
+
+The `bug-fixer` agent and `fix-loop` skill both read this file as part of their loop.
+
+## Naming rules
+
+- Lowercase, hyphens, no spaces: `checkout-flow`, `user-signup`, `background-jobs`.
+- Short enough to be memorable: ≤3 words where possible.
+- Same slug across all four files.
+- Don't prefix with the project name — the repo context is implicit.
 
 ## Maintaining workflows
 
 After each fix-loop run or significant change:
 
-1. **Update "Last verified"** in `docs/system/<workflow>.md`
-2. **Add new bugs** to the matching `workflows/<name>.md` file
-3. **Remove stale workflows** if a feature is removed
-4. **Split large workflows** if they cover too many steps (keep each to 3-7 steps)
+1. Update `Last verified` in `docs/system/<workflow>.md`.
+2. Add any newly discovered bugs to the matching `bugs/workflows/<name>.md`.
+3. Keep root bug files (`agent-reported.md`, `user-reported.md`, `resolved.md`) and the per-workflow file in sync — `fix-loop` enforces this.
+4. **Split large workflows** if they cover more than ~7 steps or multiple personas. Each workflow should exercise one coherent slice.
+5. **Retire stale workflows** when a feature is removed — delete all four artifacts in one commit, grep for references first.
 
-## Connecting workflows to everything else
+## Connecting workflows to other skills
 
-- **Fix-loop** reads `.claude/workflows.md` to know what to test
-- **Bugs** link to workflows via the `Workflow:` field in bug entries
-- **Behavioral specs** in `docs/system/` are the detailed source of truth
-- **Session logs** in `docs/sessions/` capture test results
-- **Vault sync** picks up `docs/system/` and `docs/sessions/` every 5 minutes
+- `fix-loop` reads `.claude/workflows.md` to pick targets. Delegates the bug-fix rhythm to `test-first`.
+- `bug-fixer` agent reads the per-workflow bug file before any fix.
+- `docs-governance` ensures all four file locations stay in the synced allowlist.
+- `writing-skills` owns frontmatter rules for any new skills related to workflows.
+
+## When to skip creating a workflow
+
+- The code is exploratory/throwaway and you don't plan to keep it.
+- It's pure refactoring with no user-visible behavior change.
+- It's a one-off script (cron, migration) — those belong in `docs/runbooks/`, not as a workflow.
