@@ -52,3 +52,16 @@ When the conversation touches product/market intelligence — **not technical re
 | A half-baked idea | `docs/product/ideas/<slug>.md` | `docs/product/ideas/README.md` |
 
 Distinct from `docs/research/` (technical spikes) and `docs/decisions/` (ADRs).
+
+
+## Build quality (MANDATORY)
+
+Building in this repo follows five stop rules, defined in **`.claude/skills/engineering-standards/SKILL.md`** — it auto-loads when you are about to build, fix, refactor, or commit.
+
+1. **Simplicity before complexity** — no new abstraction without 2+ callers or a real simplicity win.
+2. **First-run correctness** — actually run the thing; typecheck + tests are necessary but not sufficient.
+3. **Root-cause fixes** — no silencing errors, no `@ts-ignore`, no retries to mask timing bugs.
+4. **Clean complexity** — new abstractions get a name, purpose, boundary, test/doc.
+5. **Scope discipline** — no drive-by refactors the user did not ask for.
+
+If a rule conflicts with the user request, surface the tradeoff — do not silently comply with quick fixes.
