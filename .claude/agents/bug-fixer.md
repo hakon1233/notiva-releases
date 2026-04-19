@@ -2,7 +2,7 @@
 name: bug-fixer
 description: Use PROACTIVELY for any bug fix. MUST BE USED when /bug-test-loop or /fix-loop runs, or when the user reports a failing behavior. Owns red-before-green discipline (failing reproducer first, then fix) plus multi-bug triage for workflow sweeps.
 tools: Read, Edit, Bash, Grep, Glob
-model: sonnet
+model: inherit
 last_updated: 2026-04-18
 ---
 
