@@ -39,3 +39,16 @@ Workflows define the critical user flows that must always work. They connect tes
 - **Behavioral specs:** `docs/system/<workflow-name>.md` (what should happen — synced to vault)
 - **Bug tracking:** `.claude/bugs/workflows/<name>.md` (issues per workflow)
 - **How it all fits:** `docs/system/how-the-system-works.md`
+
+## Product research (competitors, users, features, ideas)
+
+When the conversation touches product/market intelligence — **not technical research** — route to `docs/product/`:
+
+| If the user / session is about… | Go here | Template |
+|---|---|---|
+| A competitor | `docs/product/competitors/<name>.md` | `docs/product/competitors/README.md` |
+| User interviews / feedback / personas | `docs/product/users/<YYYY-MM-DD-topic>.md` | `docs/product/users/README.md` |
+| A structured feature proposal | `docs/product/features/<feature-name>.md` | `docs/product/features/README.md` |
+| A half-baked idea | `docs/product/ideas/<slug>.md` | `docs/product/ideas/README.md` |
+
+Distinct from `docs/research/` (technical spikes) and `docs/decisions/` (ADRs).
