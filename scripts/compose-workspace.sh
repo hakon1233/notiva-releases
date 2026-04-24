@@ -27,6 +27,9 @@ set -euo pipefail
 #     changes will be clobbered on the next compose. Edit the part files in
 #     .claude/harness/ (for harness changes, via TTM template + version bump)
 #     or .claude/project/ (for project-specific changes).
+#
+# Regression test: scripts/harness/test-layered-bootstrap.sh in the TTM repo
+# exercises every safety claim of this script in a sandbox.
 
 REPO_DIR="${1:-$(pwd)}"
 cd "$REPO_DIR"
