@@ -166,6 +166,17 @@ SEPARATOR
 compose_root_file "CLAUDE"
 compose_root_file "AGENTS"
 
+# --- Settings (permission allowlist) --------------------------------------
+#
+# Claude Code reads .claude/settings.local.json at repo root. Mirror the
+# project-layer file there so workers don't stall on permission prompts for
+# routine read-only commands. Only the project layer owns this file —
+# the harness layer never ships one (project owners need full control over
+# their permission allowlist).
+if [[ -f "$PROJECT/settings.local.json" ]]; then
+  cp "$PROJECT/settings.local.json" ".claude/settings.local.json"
+fi
+
 # --- Lock the harness layer ------------------------------------------------
 #
 # Agents that try to edit anything under .claude/harness/ will get EACCES.
