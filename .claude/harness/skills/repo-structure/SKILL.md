@@ -1,6 +1,6 @@
 ---
 name: repo-structure
-description: Use PROACTIVELY before creating a new file, moving a module, introducing a new directory, or refactoring folder layout. MUST BE USED when you're about to write "utils.ts", "helpers.ts", "common.ts", add a file over 500 lines, or nest code more than 4 levels deep. Encodes the 13 measured principles that make this codebase agent-friendly.
+description: "Before creating a new file, moving a module, introducing a new directory, refactoring folder layout, writing \"utils.ts\"/\"helpers.ts\"/\"common.ts\", adding a file over 500 lines, or nesting code more than 4 levels deep: invoke `Skill('repo-structure')` and apply its 13 measured principles (size limits, depth limits, domain-verb names, feature-sliced layout)."
 last_updated: 2026-04-24
 ---
 

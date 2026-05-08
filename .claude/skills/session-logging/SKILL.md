@@ -1,6 +1,6 @@
 ---
 name: session-logging
-description: Use PROACTIVELY at the start of every Claude Code session and after each meaningful unit of work. MUST BE USED when the session log is absent, when appending progress, or when wrapping up. Defines where session logs live (docs/sessions/YYYY-MM-DD.md), when to append, the entry format, and the continuous-log discipline.
+description: "ALWAYS invoke `Skill('session-logging')` at session start, after each meaningful unit of work, and before wrapping up. Do not edit `docs/sessions/YYYY-MM-DD.md` directly, do not skip the log when the work feels small, and do not defer logging to the end — use this skill first; it owns the entry format, the continuous-log cadence, and what counts as a meaningful unit."
 last_updated: 2026-04-18
 ---
 

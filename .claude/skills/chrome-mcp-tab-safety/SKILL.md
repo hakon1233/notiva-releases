@@ -1,6 +1,6 @@
 ---
 name: chrome-mcp-tab-safety
-description: Use when touching Chrome MCP, Playwright, or any browser automation in this environment. Multiple agents may share a single browser — assume every tab you didn't create belongs to someone else. MUST BE USED before calling any mcp__claude-in-chrome__* tool, running `playwright` flows, or doing UI checks during multi-agent testing.
+description: "Before calling any mcp__claude-in-chrome__* tool, running a `playwright` flow, or doing any UI check in this shared-browser environment: invoke `Skill('chrome-mcp-tab-safety')` and follow its tab-ownership rules — assume every tab you didn't create belongs to another agent."
 last_updated: 2026-04-19
 ---
 

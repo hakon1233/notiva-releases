@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Canonical guide for authoring skills, subagents, and slash commands in this repo. Read MUST BE USED whenever creating, editing, promoting, or removing a file under .claude/{skills,agents,commands}/ — covers the frontmatter contract, routing rules, skill-vs-agent decisions, and the template propagation flow.
+description: "Before creating, editing, promoting, or removing any file under `.claude/{skills,agents,commands}/`: invoke `Skill('writing-skills')` and follow its frontmatter contract, routing rules, skill-vs-agent decision flow, and template propagation flow."
 last_updated: 2026-04-18
 ---
 

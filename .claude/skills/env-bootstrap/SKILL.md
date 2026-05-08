@@ -1,6 +1,6 @@
 ---
 name: env-bootstrap
-description: Use PROACTIVELY at the very start of every worker session — before any other work. MUST BE USED when a new dispatch-worker session begins, or when "continue" / "resume" is signaled. Captures a one-time environment snapshot and maintains a structured runtime/progress.json so a context reset (compaction, restart, handoff) doesn't lose where you were. Saves the 2–5 early exploration turns workers otherwise waste on `ls`, `which python3`, `apt list`.
+description: "ALWAYS invoke `Skill('env-bootstrap')` as the FIRST tool call in every worker session, when a new dispatch-worker session begins, and when \"continue\"/\"resume\" is signaled. Do not start any other work, do not run exploratory `ls`/`which`/`pwd`, and do not edit files before this — use this skill first; it owns the env snapshot and the `runtime/progress.json` checkpoint that survives context resets."
 last_updated: 2026-04-20
 ---
 

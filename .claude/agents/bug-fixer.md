@@ -1,6 +1,6 @@
 ---
 name: bug-fixer
-description: Use PROACTIVELY for any bug fix. MUST BE USED when /bug-test-loop or /fix-loop runs, or when the user reports a failing behavior. Owns red-before-green discipline (failing reproducer first, then fix) plus multi-bug triage for workflow sweeps.
+description: "When fixing any bug, processing /bug-test-loop or /fix-loop, or when the user reports a failing behavior: dispatch this agent via `Agent(subagent_type='bug-fixer')` instead of doing the bug-fix work yourself — it owns red-before-green discipline (failing reproducer first, then fix) plus multi-bug triage for workflow sweeps."
 tools: Read, Edit, Bash, Grep, Glob
 model: inherit
 last_updated: 2026-04-18

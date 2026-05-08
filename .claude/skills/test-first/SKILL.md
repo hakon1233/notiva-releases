@@ -1,6 +1,6 @@
 ---
 name: test-first
-description: Use PROACTIVELY for ANY bug fix, regardless of workflow. MUST BE USED when the user reports a bug, says "fix", "reproduce", "regression", "red-before-green", or when /bug-test-loop, /fix-loop, or any fix-related command runs. Canonical red-before-green discipline — reproducer file conventions, exit-code semantics (0/1/2), cross-file bug tracking, layered regression defense, BUG-NNN marker rules.
+description: "When fixing any bug, reproducing a failure, or processing /bug-test-loop, /fix-loop, or the user saying \"fix\", \"reproduce\", \"regression\", or \"red-before-green\": invoke `Skill('test-first')` BEFORE editing any code, then follow the red-before-green protocol it returns (reproducer file conventions, exit-code semantics 0/1/2, cross-file bug tracking, BUG-NNN markers)."
 last_updated: 2026-04-24
 ---
 
@@ -61,6 +61,19 @@ Pick the cheapest tier that captures the bug:
 | Manual UI walkthrough | >60s | Last resort — rendering / interaction-only |
 
 **Upgrade only when necessary.** Ask "if this can't be a static grep, why?" — the answer exposes which axis (state, timing, concurrency, IO) forces the escalation.
+
+### Dependency taxonomy — when to mock, when not to
+
+Before you decide to mock a dependency in a unit test, classify it:
+
+| Bucket | Examples | Test approach | Port? |
+|--------|----------|---------------|-------|
+| **In-process** | Internal functions, classes, types | Always test the real thing. No port, no mock. | No — see two-adapter rule |
+| **Local-substitutable** | PGLite for postgres, in-memory FS, fake clock, in-memory event store | Use the in-memory variant directly. **Internal seam — no port abstraction.** | No |
+| **Remote-but-owned** | Our PTY server, our gateway, our Supabase project | Can have a port + adapter pair (real + in-memory) when there are *two real adapters* on the way (e.g. local PTY + cloud PTY). Until then, hit the real thing or skip the test. | Only if two adapters exist |
+| **True external** | Stripe, Slack API, Anthropic API, OpenAI API | Inject a port, ship a mock adapter. The third-party is uncontrollable; isolation pays for itself. | Yes |
+
+**Rule:** the further down the table, the more justified a port becomes. A bug-fix reproducer should pick the lowest bucket the bug actually lives in. If you find yourself building a port for an in-process dependency, the module is the wrong shape — go fix that first (see `module-map/SKILL.md`).
 
 **Persist the reproducer as a file.** Path: `.claude/test-runs/reproducers/<bug-id>.sh` (bash) or a failing test in `src/lib/__tests__/` (vitest). Commit it alongside the fix.
 

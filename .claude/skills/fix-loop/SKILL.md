@@ -1,6 +1,6 @@
 ---
 name: fix-loop
-description: Use PROACTIVELY when the user says "fix loop", "run the fix loop", "test the X workflow", or when /fix-loop is invoked. MUST BE USED for workflow-scoped test/fix/verify runs. Owns iteration bookkeeping and stop conditions; delegates bug-fix rhythm to `test-first` and workflow creation to `workflow-management`.
+description: "When the user says \"fix loop\", \"run the fix loop\", \"test the X workflow\", or invokes `/fix-loop`: invoke `Skill('fix-loop')` to drive the workflow-scoped test/fix/verify run — it owns iteration bookkeeping and stop conditions, and delegates the bug-fix rhythm to `test-first`."
 last_updated: 2026-04-18
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: docs-writing
-description: Use PROACTIVELY before creating or editing any file under docs/, writing a README, writing an ADR, updating a runbook, or writing an explanatory section in a SKILL.md. MUST BE USED when you're about to write prose that explains how, why, or what. Encodes the Diataxis split + frontmatter + per-folder INDEX rules that keep docs agent-navigable.
+description: "Before creating or editing any file under `docs/`, writing a README, writing an ADR, updating a runbook, or writing explanatory prose in a SKILL.md: invoke `Skill('docs-writing')` and follow its Diataxis split, frontmatter contract, and per-folder INDEX rules."
 last_updated: 2026-04-24
 ---
 

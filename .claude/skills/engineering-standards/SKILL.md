@@ -1,6 +1,6 @@
 ---
 name: engineering-standards
-description: Use PROACTIVELY before adding a file, writing a new abstraction, committing, fixing a bug, or claiming work is done. MUST BE USED when the user says "build this", "add this", "fix", "refactor", "clean up", or "ship it". Defines the six stop rules that separate stable, first-run-correct work from quick-fix rot.
+description: "ALWAYS invoke `Skill('engineering-standards')` before adding a file, writing a new abstraction, committing, fixing a bug, or claiming work is done — and whenever the user says \"build this\", \"add this\", \"fix\", \"refactor\", \"clean up\", or \"ship it\". Do not write code, edit files, or ship work directly without consulting this skill first — it owns the six stop rules (simplicity-before-complexity, first-run-correctness, root-cause fixes, clean complexity, scope discipline, intellectual honesty) that gate first-run-correct work."
 last_updated: 2026-04-20
 ---
 
@@ -57,15 +57,29 @@ If masking — stop and find the real layer. Silenced bugs always come back, usu
 
 **Trigger**: rule #1 didn't apply — you actually need the abstraction.
 
-**Question**: Does it have (a) a single clear purpose, (b) a named boundary, (c) a test or doc covering the new surface area, (d) a concrete reason for existing (not speculative)?
+**Question**: Does it have (a) a single clear purpose, (b) a named seam (NOT "boundary" — see `module-map/LANGUAGE.md`), (c) a test or doc covering the new surface area, (d) a concrete reason for existing (not speculative)?
 
 If no — defer until you can answer yes. Don't merge half-formed abstractions.
+
+**Deletion test (apply BEFORE designing the interface):**
+Mentally delete the new module. Walk through what its callers would
+have to do without it. If the complexity vanishes — if callers don't
+need the work the module was doing — the module is a pass-through and
+shouldn't exist. Inline it. Examples + the full vocabulary contract
+are in `.claude/skills/module-map/LANGUAGE.md`.
+
+**Two-adapter rule:**
+Don't introduce a port (interface + only one implementation) on
+speculation. One adapter is indirection paid in cost; two adapters is
+a real seam. If you can't name two implementations today, write the
+implementation directly and extract later.
 
 **Red flags**:
 - A class with one method. (Just use the function.)
 - A utility file with one helper. (Inline it.)
-- An interface no one else implements. (Unneeded indirection.)
+- An interface no one else implements. (Unneeded indirection — fails the two-adapter rule.)
 - "Helpers", "Utils", "Common" as file/module names. (Name what they do.)
+- "Wrapper" / "handler" / "manager" / "service" in a name. (See LANGUAGE.md — these are usually shallow.)
 
 ### 5. Scope discipline
 

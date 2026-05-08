@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Use PROACTIVELY before any commit AND during longer tasks to commit per logical unit. MUST BE USED when the user says "commit", "ready to commit", "create a commit", "git commit", "pre-commit", or is about to run `git add`/`git commit`. Explains the atomic commit cadence (one logical unit per commit, mid-task is fine), the docs + template contract, and the two-line pre-commit check (audit-stray-docs + generate-skills-index) to run when docs or .claude/{skills,commands,agents}/ changed.
+description: "ALWAYS invoke `Skill('commit')` before running `git add` or `git commit`, when the user says \"commit\", \"ready to commit\", \"create a commit\", or \"pre-commit\", and at every logical unit during longer tasks. Do not run `git commit` directly, do not batch unrelated changes into one commit, and do not skip the pre-commit checks — use this skill first; it owns the atomic-commit cadence and the audit-stray-docs / generate-skills-index pre-commit checks for docs or .claude/{skills,commands,agents}/ changes."
 last_updated: 2026-04-20
 ---
 

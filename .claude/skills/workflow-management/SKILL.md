@@ -1,6 +1,6 @@
 ---
 name: workflow-management
-description: Use PROACTIVELY when discovering, creating, renaming, or removing workflow definitions. MUST BE USED when adding a new user-facing flow that needs testing, or when the user asks for workflow changes. Owns the four-file workflow contract (registry + spec + bug file + fix-loop binding).
+description: "Before discovering, creating, renaming, or removing any workflow definition, or when the user asks to add a new user-facing flow that needs testing: invoke `Skill('workflow-management')` and follow its four-file workflow contract (registry + spec + bug file + fix-loop binding)."
 last_updated: 2026-04-18
 ---
 

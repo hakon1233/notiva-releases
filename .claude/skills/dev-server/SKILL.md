@@ -1,6 +1,6 @@
 ---
 name: dev-server
-description: Use PROACTIVELY whenever you need to start, stop, or check a long-running dev server (e.g. `npm run dev`, `next dev`, `vite`, `wrangler dev`) for THIS project. MUST BE USED when the user asks to "run the site", "open it in the browser", "start the dev server", "bring it up on port X", or when you're about to run any command that stays running indefinitely. Owns the canonical dev-server lifecycle — one named tmux session per project, never a bare `exec` / `bash` background call.
+description: "Before starting, stopping, or checking any long-running dev server (`npm run dev`, `next dev`, `vite`, `wrangler dev`) for this project, or when the user says \"run the site\", \"open it in the browser\", \"start the dev server\", or \"bring it up on port X\": invoke `Skill('dev-server')` and use its named-tmux-session lifecycle instead of a bare background `exec`/`bash`."
 last_updated: 2026-04-22
 ---
 

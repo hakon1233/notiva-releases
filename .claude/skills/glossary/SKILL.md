@@ -1,6 +1,6 @@
 ---
 name: glossary
-description: Use PROACTIVELY when introducing a new entity name, action verb, or role label in code, comments, or docs. MUST BE USED when you're about to coin a term that the project hasn't used before, or when naming feels ambiguous (User vs Account vs Member, fetch vs load vs sync, owner vs admin vs root). Defines this project's ubiquitous language so every dispatched worker inherits the same vocabulary instead of re-deriving it.
+description: "Before coining a new entity name, action verb, or role label in code/comments/docs, or when naming feels ambiguous (User vs Account vs Member, fetch vs load vs sync, owner vs admin vs root): invoke `Skill('glossary')` and reuse the existing ubiquitous-language term instead of inventing a new one."
 last_updated: 2026-04-29
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: docs-governance
-description: Use PROACTIVELY when any `.md` file is created, renamed, or moved outside `src/`. MUST BE USED when the user says "stray docs", "docs governance", "where should this doc live", or runs the stray-doc auditor. Canonical home for the vault-synced allowlist and the filename-heuristic table that maps stray docs to their correct location.
+description: "Before creating, renaming, or moving any `.md` file outside `src/`, or when the user says \"stray docs\", \"docs governance\", \"where should this doc live\", or runs the stray-doc auditor: invoke `Skill('docs-governance')` and place the file using its vault-synced allowlist and filename-heuristic table."
 last_updated: 2026-04-18
 ---
 

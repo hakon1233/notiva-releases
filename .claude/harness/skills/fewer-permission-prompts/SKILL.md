@@ -1,6 +1,6 @@
 ---
 name: fewer-permission-prompts
-description: Use PROACTIVELY whenever a worker session keeps hitting "Claude needs your permission to use Bash" idle stalls, or when extending the per-repo Claude Code allowlist. MUST BE USED before adding new entries to `.claude/settings.local.json` or its `.template` source — explains the prioritization rule (read-only / common ops first), the three buckets (always-allow / never-allow / ask), and the deny-list invariants this repo ships with.
+description: "Before adding any entry to `.claude/settings.local.json` or its `.template` source, or when a worker session keeps stalling on \"Claude needs your permission to use Bash\" prompts: invoke `Skill('fewer-permission-prompts')` and use its three-bucket allowlist rules (always-allow / never-allow / ask) and deny-list invariants."
 last_updated: 2026-04-29
 ---
 
