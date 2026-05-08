@@ -51,6 +51,15 @@ if state_has "$SESSION_ID" had-edit-or-write \
   violations+=("Skill('engineering-standards') — confirm the six stop rules (simplicity, first-run-correctness, root-cause, clean complexity, scope, intellectual honesty) hold for your changes")
 fi
 
+# session-logging on any substantive work (the skill says: "after each
+# meaningful unit of work, before wrapping up"). Pre-tool-use only gates
+# the *write* of docs/sessions; if the worker skips the write entirely
+# the discipline is bypassed. This gate covers that case.
+if state_has "$SESSION_ID" had-edit-or-write \
+   && ! state_has "$SESSION_ID" session-logging-fired; then
+  violations+=("Skill('session-logging') — append today's work to docs/sessions/YYYY-MM-DD.md per its continuous-log discipline (this skill is mandatory after meaningful work, even if you didn't touch docs/sessions yet)")
+fi
+
 # verification-before-completion on substantive work (test run substitutes)
 if state_has "$SESSION_ID" had-edit-or-write \
    && ! state_has "$SESSION_ID" verification-fired \
@@ -70,9 +79,9 @@ if state_has "$SESSION_ID" had-edit-or-write \
   violations+=("Skill('repo-structure') — confirm the 13 measured principles (size limits, depth limits, domain-verb names, no utils/helpers dumps, feature-sliced layout) apply to your file layout")
 fi
 
-# Block ONCE per session if any violations remain. After the worker pivots
-# and invokes the listed skills, the next stop attempt will find all gates
-# satisfied and we fall through to the allow path.
+# If violations remain on FIRST fire, block-once and emit the bullet list.
+# After the worker pivots and (hopefully) invokes the listed skills, the
+# next stop attempt re-evaluates violations from scratch.
 if [[ ${#violations[@]} -gt 0 ]] && ! state_has "$SESSION_ID" stop-blocked-all; then
   state_set "$SESSION_ID" stop-blocked-all
   reason="Harness gate: before ending this turn you must invoke the following skills (Claude Code allows only one Stop-hook block per turn so this is your single chance):"$'\n'
@@ -84,14 +93,22 @@ if [[ ${#violations[@]} -gt 0 ]] && ! state_has "$SESSION_ID" stop-blocked-all; 
   exit 0
 fi
 
-# All gates satisfied. Drop a sentinel so external watchers (like the
-# benchmark runner's waitForStop) can detect turn-completion without
-# waiting for the 15-min idle window. Claude Code in interactive mode
-# does NOT reliably emit agent.stop on its own when a turn ends.
-#
-# We touch the sentinel under the standard runtime/.harness-state dir
-# AND mirror to a stable filename ($PWD/runtime/.harness-state/last-turn-done)
-# so a watcher can poll a single path without knowing the session id.
+# Two cases reach here:
+#   (a) violations is empty → all gates pass, write completion sentinel.
+#   (b) violations still present but stop-blocked-all is set → worker
+#       ignored the first block (Claude Code rejects subsequent blocks
+#       within the same turn anyway). Allow the stop but DO NOT write
+#       last-turn-done — the run didn't satisfy the harness contract,
+#       so the runner's fast-path shouldn't treat this as clean
+#       completion. waitForStop falls back to the idle window.
+if [[ ${#violations[@]} -gt 0 ]]; then
+  exit 0
+fi
+
+# All gates satisfied — drop the completion sentinel so the benchmark
+# runner's waitForStop fast-paths within ~10s instead of waiting for the
+# 15-min idle window. Claude Code in interactive mode does NOT reliably
+# emit agent.stop on its own when a turn ends.
 state_set "$SESSION_ID" turn-done
 mkdir -p runtime/.harness-state 2>/dev/null
 {
