@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
 # Harness Stop hook — blocks turn-completion until the discipline skills
-# that lack a clean tool-call gate have fired (or been explicitly waived).
+# that lack a clean tool-call gate have all fired (or been waived).
 #
-# The PreToolUse hook gates skills with concrete tool triggers
-# (env-bootstrap = first call; session-logging = docs/sessions edits;
-# commit = git commit/add). The OTHER mandatory-discipline skills —
-# engineering-standards, verification-before-completion — have no clean
-# tool gate. The Stop hook is their enforcement point: at turn-end, if
-# the worker did substantive work but skipped the skill, block the stop
-# with `decision: block` and a reason the worker reads + reacts to.
+# IMPORTANT: Claude Code only respects ONE Stop-hook `decision: block` per
+# turn cycle. Subsequent blocks in the same turn are silently ignored to
+# prevent infinite loops. This means the hook can't sequentially block
+# missing skills one-by-one — it has to list ALL violations in a single
+# block message on the first fire. The worker reads the list, invokes
+# every missing skill, and on the next stop attempt all gates pass.
 #
-# Block-once-per-skill: after we block on a skill, we set a sentinel so
-# we don't loop. The worker is told "invoke X" — once it does, we allow
-# the next stop attempt. If the worker tries to stop AGAIN without doing
-# what X said, we still allow (we're not enforcing skill content, only
-# the protocol step). This avoids deadlock while preserving the gate.
+# Block-once via stop-blocked-all sentinel.
 #
 # Kill switch: TTM_DISABLE_HARNESS_HOOK=1 → exit 0 (allow stop).
 
@@ -46,49 +41,46 @@ emit_block() {
   jq -n --arg reason "$reason" '{decision:"block", reason:$reason}'
 }
 
-# ---- Gate 4: engineering-standards on substantive work ---------------------
-# If the worker performed any Edit or Write this session, treat that as
-# substantive work (added/changed code) and require engineering-standards
-# to have fired before allowing stop.
+# ---- Aggregate every missing skill into one violation list ----------------
+# Each entry is a one-line directive the worker reads + acts on.
+violations=()
+
+# engineering-standards on substantive work
 if state_has "$SESSION_ID" had-edit-or-write \
-   && ! state_has "$SESSION_ID" engineering-standards-fired \
-   && ! state_has "$SESSION_ID" stop-blocked-engineering-standards; then
-  state_set "$SESSION_ID" stop-blocked-engineering-standards
-  emit_block "Harness gate: you performed substantive code changes this session but did not invoke Skill('engineering-standards'). Invoke it now and confirm the six stop rules (simplicity-before-complexity, first-run-correctness, root-cause fixes, clean complexity, scope discipline, intellectual honesty) hold for this work, then end the turn."
-  exit 0
+   && ! state_has "$SESSION_ID" engineering-standards-fired; then
+  violations+=("Skill('engineering-standards') — confirm the six stop rules (simplicity, first-run-correctness, root-cause, clean complexity, scope, intellectual honesty) hold for your changes")
 fi
 
-# ---- Gate 5: verification-before-completion on substantive work -------------
-# If the worker did Edit/Write but neither invoked verification-before-completion
-# NOR ran a recognized test command, block stop and tell them to verify.
+# verification-before-completion on substantive work (test run substitutes)
 if state_has "$SESSION_ID" had-edit-or-write \
    && ! state_has "$SESSION_ID" verification-fired \
-   && ! state_has "$SESSION_ID" had-test-run \
-   && ! state_has "$SESSION_ID" stop-blocked-verification; then
-  state_set "$SESSION_ID" stop-blocked-verification
-  emit_block "Harness gate: you changed code but did not run a verification step (test, build, type-check, lint). Invoke Skill('verification-before-completion') and run the verification it specifies — the verification command must appear in the same assistant turn as your completion claim."
-  exit 0
+   && ! state_has "$SESSION_ID" had-test-run; then
+  violations+=("Skill('verification-before-completion') — run a verification command (test/build/typecheck/lint) in the same turn as your completion claim")
 fi
 
-# ---- Gate 6: docs-writing on docs/ edits -----------------------------------
+# docs-writing on docs/ edits
 if state_has "$SESSION_ID" had-docs-edit \
-   && ! state_has "$SESSION_ID" docs-writing-fired \
-   && ! state_has "$SESSION_ID" stop-blocked-docs-writing; then
-  state_set "$SESSION_ID" stop-blocked-docs-writing
-  emit_block "Harness gate: you edited files under docs/ but did not invoke Skill('docs-writing'). Invoke it now and confirm Diataxis split + frontmatter + per-folder INDEX rules apply to your changes, then end the turn."
-  exit 0
+   && ! state_has "$SESSION_ID" docs-writing-fired; then
+  violations+=("Skill('docs-writing') — confirm Diataxis split + frontmatter + per-folder INDEX rules apply to your docs/ changes")
 fi
 
-# ---- Gate 7: repo-structure on substantive code changes --------------------
-# Same shape as engineering-standards: any Edit/Write this session implies
-# files were created or moved, so repo-structure (size limits, depth limits,
-# domain-verb names, no helpers.ts dumps, feature-sliced layout) should have
-# been consulted. Block-once.
+# repo-structure on substantive code changes
 if state_has "$SESSION_ID" had-edit-or-write \
-   && ! state_has "$SESSION_ID" repo-structure-fired \
-   && ! state_has "$SESSION_ID" stop-blocked-repo-structure; then
-  state_set "$SESSION_ID" stop-blocked-repo-structure
-  emit_block "Harness gate: you performed code changes this session but did not invoke Skill('repo-structure'). Invoke it now and confirm the 13 measured principles (size ≤300/500 lines, depth ≤4, domain-verb names, no utils.ts/helpers.ts dumps, feature-sliced layout, named exports, strict types) apply to your changes, then end the turn."
+   && ! state_has "$SESSION_ID" repo-structure-fired; then
+  violations+=("Skill('repo-structure') — confirm the 13 measured principles (size limits, depth limits, domain-verb names, no utils/helpers dumps, feature-sliced layout) apply to your file layout")
+fi
+
+# Block ONCE per session if any violations remain. After the worker pivots
+# and invokes the listed skills, the next stop attempt will find all gates
+# satisfied and we fall through to the allow path.
+if [[ ${#violations[@]} -gt 0 ]] && ! state_has "$SESSION_ID" stop-blocked-all; then
+  state_set "$SESSION_ID" stop-blocked-all
+  reason="Harness gate: before ending this turn you must invoke the following skills (Claude Code allows only one Stop-hook block per turn so this is your single chance):"$'\n'
+  for v in "${violations[@]}"; do
+    reason+="  • ${v}"$'\n'
+  done
+  reason+="Invoke them now, then end the turn."
+  emit_block "$reason"
   exit 0
 fi
 
