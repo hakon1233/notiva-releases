@@ -79,6 +79,19 @@ if state_has "$SESSION_ID" had-docs-edit \
   exit 0
 fi
 
+# ---- Gate 7: repo-structure on substantive code changes --------------------
+# Same shape as engineering-standards: any Edit/Write this session implies
+# files were created or moved, so repo-structure (size limits, depth limits,
+# domain-verb names, no helpers.ts dumps, feature-sliced layout) should have
+# been consulted. Block-once.
+if state_has "$SESSION_ID" had-edit-or-write \
+   && ! state_has "$SESSION_ID" repo-structure-fired \
+   && ! state_has "$SESSION_ID" stop-blocked-repo-structure; then
+  state_set "$SESSION_ID" stop-blocked-repo-structure
+  emit_block "Harness gate: you performed code changes this session but did not invoke Skill('repo-structure'). Invoke it now and confirm the 13 measured principles (size ≤300/500 lines, depth ≤4, domain-verb names, no utils.ts/helpers.ts dumps, feature-sliced layout, named exports, strict types) apply to your changes, then end the turn."
+  exit 0
+fi
+
 # All gates satisfied. Drop a sentinel so external watchers (like the
 # benchmark runner's waitForStop) can detect turn-completion without
 # waiting for the 15-min idle window. Claude Code in interactive mode
