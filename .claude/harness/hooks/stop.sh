@@ -60,11 +60,15 @@ if state_has "$SESSION_ID" had-edit-or-write \
   violations+=("Skill('session-logging') — append today's work to docs/sessions/YYYY-MM-DD.md per its continuous-log discipline (this skill is mandatory after meaningful work, even if you didn't touch docs/sessions yet)")
 fi
 
-# verification-before-completion on substantive work (test run substitutes)
+# verification-before-completion on substantive work — always demand the
+# explicit Skill invocation, even if a test command already ran. Scenario
+# scoring needs the strict invocation; the skill itself tells the worker
+# to run the verification command, so the action still gets done. Prior
+# version short-circuited on had-test-run, which let workers cherry-pick
+# this off the bullet list.
 if state_has "$SESSION_ID" had-edit-or-write \
-   && ! state_has "$SESSION_ID" verification-fired \
-   && ! state_has "$SESSION_ID" had-test-run; then
-  violations+=("Skill('verification-before-completion') — run a verification command (test/build/typecheck/lint) in the same turn as your completion claim")
+   && ! state_has "$SESSION_ID" verification-fired; then
+  violations+=("Skill('verification-before-completion') — confirm your verification command (test/build/typecheck/lint) ran in the same turn as your completion claim, AND that the body's iron-law rule was followed")
 fi
 
 # docs-writing on docs/ edits
