@@ -132,4 +132,27 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
   fi
 fi
 
+# ---- Gate 4: repo-structure gates Write on a NEW file path ---------------
+# A `Write` to a path that doesn't exist yet means the worker is creating
+# a new file — exactly the trigger condition for repo-structure (size
+# limits, depth limits, domain-verb names, no utils.ts/helpers.ts dumps,
+# feature-sliced layout). Block-once: after the first new-file-write
+# block, subsequent new-file Writes pass through (the worker pivoted
+# once, that's the contract).
+if [[ "$TOOL_NAME" == "Write" ]] && ! state_has "$SESSION_ID" repo-structure-fired \
+   && ! state_has "$SESSION_ID" pretool-blocked-repo-structure; then
+  FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+  # Skip blocks for in-tree state files: runtime/, .git/, .claude/state.
+  case "$FILE_PATH" in
+    */runtime/*|*/.git/*|*/.claude/*) ;;
+    *)
+      if [[ -n "$FILE_PATH" && ! -e "$FILE_PATH" ]]; then
+        state_set "$SESSION_ID" pretool-blocked-repo-structure
+        emit_deny "Harness gate: you're about to create a new file ($FILE_PATH). Invoke Skill('repo-structure') first to confirm the 13 measured principles (size ≤300/500 lines, depth ≤4, domain-verb names, no utils.ts/helpers.ts dumps, feature-sliced layout, named exports). After that fires, new-file Writes are unblocked."
+        exit 0
+      fi
+      ;;
+  esac
+fi
+
 exit 0
