@@ -85,17 +85,20 @@ if state_has "$SESSION_ID" had-source-edit \
   violations+=("Skill('repo-structure') — confirm the 13 measured principles (size limits, depth limits, domain-verb names, no utils/helpers dumps, feature-sliced layout) apply to your file layout")
 fi
 
-# UserPromptSubmit→Stop bridge: catches scenarios where the worker
-# answered text-only without editing files, so the PreToolUse Gate 5
-# bridge never fired. The prompt-suggested-X sentinel was still set by
-# UserPromptSubmit, indicating the routing intent. If the suggested
-# skill never fired AND no PreToolUse block already covered it, demand
-# it at Stop time.
+# skill-router→Stop bridge: catches scenarios where the worker answered
+# text-only without editing files, so the PreToolUse front-load loop
+# never fired. The router writes prompt-suggested-X files in
+# runtime/.harness-state/; check both the file (router output) and
+# state-lib sentinel (PreToolUse-promoted copy).
+PRE_DIR="runtime/.harness-state"
 for sk in refactor-plan glossary module-map test-first; do
-  if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
+  suggested=0
+  [[ -f "$PRE_DIR/prompt-suggested-${sk}" ]] && suggested=1
+  state_has "$SESSION_ID" "prompt-suggested-${sk}" && suggested=1
+  if [[ "$suggested" == "1" ]] \
      && ! state_has "$SESSION_ID" "${sk}-fired" \
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}"; then
-    violations+=("Skill('${sk}') — your prompt's routing match said this skill applies. Even if you handled the task with text only, invoke it briefly to confirm you considered its discipline before ending the turn.")
+    violations+=("Skill('${sk}') — skill-router said this applies to your prompt. Even if you handled the task with text only, invoke it briefly to confirm you considered its discipline before ending the turn.")
   fi
 done
 

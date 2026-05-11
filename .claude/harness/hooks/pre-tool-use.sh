@@ -81,6 +81,19 @@ if [[ "$TOOL_NAME" == "Skill" ]]; then
   exit 0
 fi
 
+# skill-router subagent invocation. Fires when the worker calls Task or
+# Agent with subagent_type=skill-router. The router writes its own
+# `skill-router-fired` sentinel via Bash (so the parent can detect
+# completion regardless of how its tool name maps), but we ALSO write
+# one here as a belt-and-suspenders signal in case the subagent crashes
+# before its Bash call lands.
+if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
+  SUBAGENT=$(echo "$PAYLOAD" | jq -r '.tool_input.subagent_type // empty')
+  if [[ "$SUBAGENT" == "skill-router" ]]; then
+    state_set "$SESSION_ID" skill-router-invoked
+  fi
+fi
+
 # Track tool-call patterns the Stop hook needs to know about. We don't
 # block here; we just record so the Stop hook can decide whether the
 # session involved code changes (engineering-standards trigger), edits to
@@ -110,17 +123,57 @@ if ! state_has "$SESSION_ID" env-bootstrap-fired; then
   exit 0
 fi
 
-# After env-bootstrap, front-load any prompt-suggested skills BEFORE any
-# other tool call. This bypasses the bench-system agent.stop bug that
-# can truncate Stop-hook pivots — by demanding these upfront, sentinels
-# are written before any agent.stop event. Block-once per skill via the
-# pretool-blocked-X sentinel, same pattern as Gate 5.
+# skill-router subagent gate. After env-bootstrap, the worker MUST invoke
+# Agent(subagent_type='skill-router') before any other tool call. The
+# router reads the user's prompt, decides which prompt-routed skills
+# apply, writes prompt-suggested-* sentinels, and returns a brief
+# recommendation. Skip when:
+#   - TTM_DISABLE_SKILL_ROUTER=1 (legacy keyword routing or no routing)
+#   - the file runtime/.harness-state/skill-router-fired exists (router
+#     completed its Bash sentinel write — happens after the subagent
+#     returns)
+#   - the worker is currently invoking the router itself (Task/Agent
+#     with subagent_type=skill-router). Any other Task/Agent call
+#     before the router fires is denied to keep ordering deterministic.
+if [[ "${TTM_DISABLE_SKILL_ROUTER:-0}" != "1" ]]; then
+  ROUTER_FIRED_FILE="runtime/.harness-state/skill-router-fired"
+  if [[ ! -f "$ROUTER_FIRED_FILE" ]] && ! state_has "$SESSION_ID" skill-router-invoked; then
+    # Allow the router invocation itself through.
+    if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
+      SUBAGENT=$(echo "$PAYLOAD" | jq -r '.tool_input.subagent_type // empty')
+      if [[ "$SUBAGENT" == "skill-router" ]]; then
+        state_set "$SESSION_ID" skill-router-invoked
+      else
+        emit_deny "Harness gate: invoke Agent(subagent_type='skill-router') BEFORE any other subagent. The router reads the user prompt, decides which skills you must invoke, and writes the sentinels the PreToolUse + Stop hooks enforce."
+        exit 0
+      fi
+    else
+      emit_deny "Harness gate: invoke Agent(subagent_type='skill-router') as your second tool call (after env-bootstrap, before anything else). It reads the prompt and tells you which skills to load. After it returns, all other tools become available."
+      exit 0
+    fi
+  fi
+fi
+
+# After env-bootstrap + skill-router, front-load any router-suggested
+# skills BEFORE any other tool call. The router writes prompt-suggested-*
+# files; this loop reads them (filesystem, not state lib because the
+# subagent writes from a different working dir context) and converts
+# them to state sentinels for the rest of the gates to enforce.
+PRE_DIR="runtime/.harness-state"
+if [[ -d "$PRE_DIR" ]]; then
+  for sk in refactor-plan glossary module-map test-first; do
+    if [[ -f "$PRE_DIR/prompt-suggested-${sk}" ]] \
+       && ! state_has "$SESSION_ID" "prompt-suggested-${sk}"; then
+      state_set "$SESSION_ID" "prompt-suggested-${sk}"
+    fi
+  done
+fi
 for sk in refactor-plan glossary module-map test-first; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
      && ! state_has "$SESSION_ID" "${sk}-fired" \
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}-frontload"; then
     state_set "$SESSION_ID" "pretool-blocked-${sk}-frontload"
-    emit_deny "Harness gate: your prompt's routing match (${sk}) hasn't been invoked. Invoke Skill('${sk}') now BEFORE any other tool call — this front-loads the strict-engagement signal so it can't be truncated by a late Stop-hook pivot. After that fires, other tools are unblocked."
+    emit_deny "Harness gate: skill-router said your prompt requires Skill('${sk}'). Invoke it now BEFORE any other tool call. After that fires, other tools are unblocked."
     exit 0
   fi
 done

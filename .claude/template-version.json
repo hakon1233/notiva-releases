@@ -1,8 +1,8 @@
 {
-  "template_commit": "aaefbc6",
-  "template_commit_date": "2026-05-11T11:57:37+02:00",
+  "template_commit": "e9fcc5c",
+  "template_commit_date": "2026-05-11T20:31:45+02:00",
   "bootstrap_version": "2026.04.24b",
-  "applied_at": "2026-05-11T10:05:23Z",
+  "applied_at": "2026-05-11T18:41:00Z",
   "source": "/Users/openhakon/openclaw/repos/task-terminal-manager",
   "layout": "layered-v2"
 }
