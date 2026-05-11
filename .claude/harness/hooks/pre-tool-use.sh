@@ -146,7 +146,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
     */runtime/*|*/.git/*|*/.claude/*|*/docs/*|docs/*) ;;
     *)
       # Only enforce on non-docs source edits.
-      for skill in refactor-plan glossary module-map; do
+      for skill in refactor-plan glossary module-map test-first; do
         if state_has "$SESSION_ID" "prompt-suggested-${skill}" \
            && ! state_has "$SESSION_ID" "${skill}-fired" \
            && ! state_has "$SESSION_ID" "pretool-blocked-${skill}"; then

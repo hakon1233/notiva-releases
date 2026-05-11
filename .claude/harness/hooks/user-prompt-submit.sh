@@ -148,6 +148,7 @@ if [[ -n "$SESSION_ID" ]]; then
         *"Skill('refactor-plan')"*)  state_set "$SESSION_ID" prompt-suggested-refactor-plan ;;
         *"Skill('glossary')"*)       state_set "$SESSION_ID" prompt-suggested-glossary ;;
         *"Skill('module-map')"*)     state_set "$SESSION_ID" prompt-suggested-module-map ;;
+        *"Skill('test-first')"*)     state_set "$SESSION_ID" prompt-suggested-test-first ;;
       esac
     done
   fi

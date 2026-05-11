@@ -91,7 +91,7 @@ fi
 # UserPromptSubmit, indicating the routing intent. If the suggested
 # skill never fired AND no PreToolUse block already covered it, demand
 # it at Stop time.
-for sk in refactor-plan glossary module-map; do
+for sk in refactor-plan glossary module-map test-first; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
      && ! state_has "$SESSION_ID" "${sk}-fired" \
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}"; then
