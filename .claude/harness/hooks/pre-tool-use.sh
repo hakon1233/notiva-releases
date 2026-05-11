@@ -91,6 +91,7 @@ case "$TOOL_NAME" in
     FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
     case "$FILE_PATH" in
       */docs/*|docs/*) state_set "$SESSION_ID" had-docs-edit ;;
+      *) state_set "$SESSION_ID" had-source-edit ;;
     esac
     ;;
   Bash)
@@ -130,6 +131,32 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
       exit 0
     fi
   fi
+fi
+
+# ---- Gate 5: UserPromptSubmit→PreToolUse bridge --------------------------
+# When the UserPromptSubmit hook detected a routing intent (e.g. "extract"
+# in the prompt → refactor-plan), it writes prompt-suggested-<skill>
+# sentinels. Block the FIRST source-edit until the suggested skill has
+# actually fired. Block-once per skill so the worker can proceed after
+# pivoting. Bridges the soft UserPromptSubmit recommendation to a
+# mechanical enforcement.
+if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
+  FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+  case "$FILE_PATH" in
+    */runtime/*|*/.git/*|*/.claude/*|*/docs/*|docs/*) ;;
+    *)
+      # Only enforce on non-docs source edits.
+      for skill in refactor-plan glossary module-map; do
+        if state_has "$SESSION_ID" "prompt-suggested-${skill}" \
+           && ! state_has "$SESSION_ID" "${skill}-fired" \
+           && ! state_has "$SESSION_ID" "pretool-blocked-${skill}"; then
+          state_set "$SESSION_ID" "pretool-blocked-${skill}"
+          emit_deny "Harness gate: your prompt's routing match ($skill) hasn't been invoked. Invoke Skill('$skill') now to confirm the discipline applies before editing source. After that fires, source edits are unblocked for this skill."
+          exit 0
+        fi
+      done
+      ;;
+  esac
 fi
 
 # ---- Gate 4: repo-structure gates Write on a NEW file path ---------------

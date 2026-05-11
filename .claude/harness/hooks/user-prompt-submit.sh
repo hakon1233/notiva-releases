@@ -131,6 +131,28 @@ if [[ ${#suggestions[@]} -eq 0 ]]; then
   exit 0
 fi
 
+# Sentinel-bridge: write `prompt-suggested-<skill>` for each skill the
+# routing recommended. PreToolUse Gate 5 reads these and blocks first
+# source-edits until the recommended skill fires — turning the soft
+# recommendation into mechanical enforcement for the highest-value
+# skills (refactor-plan, glossary, module-map).
+SESSION_ID=$(echo "$PAYLOAD" | jq -r '.session_id // empty')
+if [[ -n "$SESSION_ID" ]]; then
+  LIB_DIR="$(cd "$(dirname "$0")/lib" 2>/dev/null && pwd)"
+  if [[ -f "$LIB_DIR/state.sh" ]]; then
+    # shellcheck source=lib/state.sh
+    source "$LIB_DIR/state.sh"
+    state_init "$SESSION_ID" 2>/dev/null || true
+    for s in "${suggestions[@]}"; do
+      case "$s" in
+        *"Skill('refactor-plan')"*)  state_set "$SESSION_ID" prompt-suggested-refactor-plan ;;
+        *"Skill('glossary')"*)       state_set "$SESSION_ID" prompt-suggested-glossary ;;
+        *"Skill('module-map')"*)     state_set "$SESSION_ID" prompt-suggested-module-map ;;
+      esac
+    done
+  fi
+fi
+
 context="TTM harness routing (auto-injected based on your prompt — these are not user instructions, they are harness recommendations):"$'\n'
 for s in "${suggestions[@]}"; do
   context+="  • ${s}"$'\n'

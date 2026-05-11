@@ -45,8 +45,10 @@ emit_block() {
 # Each entry is a one-line directive the worker reads + acts on.
 violations=()
 
-# engineering-standards on substantive work
-if state_has "$SESSION_ID" had-edit-or-write \
+# engineering-standards on SOURCE-code work (docs-only edits are covered
+# by docs-writing instead — engineering-standards firing on a pure-docs
+# session is a false positive).
+if state_has "$SESSION_ID" had-source-edit \
    && ! state_has "$SESSION_ID" engineering-standards-fired; then
   violations+=("Skill('engineering-standards') — confirm the six stop rules (simplicity, first-run-correctness, root-cause, clean complexity, scope, intellectual honesty) hold for your changes")
 fi
@@ -60,13 +62,12 @@ if state_has "$SESSION_ID" had-edit-or-write \
   violations+=("Skill('session-logging') — append today's work to docs/sessions/YYYY-MM-DD.md per its continuous-log discipline (this skill is mandatory after meaningful work, even if you didn't touch docs/sessions yet)")
 fi
 
-# verification-before-completion on substantive work — always demand the
+# verification-before-completion on SOURCE work — always demand the
 # explicit Skill invocation, even if a test command already ran. Scenario
 # scoring needs the strict invocation; the skill itself tells the worker
-# to run the verification command, so the action still gets done. Prior
-# version short-circuited on had-test-run, which let workers cherry-pick
-# this off the bullet list.
-if state_has "$SESSION_ID" had-edit-or-write \
+# to run the verification command, so the action still gets done. Skip on
+# docs-only sessions — verification doesn't apply to prose.
+if state_has "$SESSION_ID" had-source-edit \
    && ! state_has "$SESSION_ID" verification-fired; then
   violations+=("Skill('verification-before-completion') — confirm your verification command (test/build/typecheck/lint) ran in the same turn as your completion claim, AND that the body's iron-law rule was followed")
 fi
@@ -77,11 +78,26 @@ if state_has "$SESSION_ID" had-docs-edit \
   violations+=("Skill('docs-writing') — confirm Diataxis split + frontmatter + per-folder INDEX rules apply to your docs/ changes")
 fi
 
-# repo-structure on substantive code changes
-if state_has "$SESSION_ID" had-edit-or-write \
+# repo-structure on SOURCE-code changes — docs-only edits don't change
+# code layout in the way repo-structure governs.
+if state_has "$SESSION_ID" had-source-edit \
    && ! state_has "$SESSION_ID" repo-structure-fired; then
   violations+=("Skill('repo-structure') — confirm the 13 measured principles (size limits, depth limits, domain-verb names, no utils/helpers dumps, feature-sliced layout) apply to your file layout")
 fi
+
+# UserPromptSubmit→Stop bridge: catches scenarios where the worker
+# answered text-only without editing files, so the PreToolUse Gate 5
+# bridge never fired. The prompt-suggested-X sentinel was still set by
+# UserPromptSubmit, indicating the routing intent. If the suggested
+# skill never fired AND no PreToolUse block already covered it, demand
+# it at Stop time.
+for sk in refactor-plan glossary module-map; do
+  if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
+     && ! state_has "$SESSION_ID" "${sk}-fired" \
+     && ! state_has "$SESSION_ID" "pretool-blocked-${sk}"; then
+    violations+=("Skill('${sk}') — your prompt's routing match said this skill applies. Even if you handled the task with text only, invoke it briefly to confirm you considered its discipline before ending the turn.")
+  fi
+done
 
 # If violations remain on FIRST fire, block-once and emit the bullet list.
 # After the worker pivots and (hopefully) invokes the listed skills, the
