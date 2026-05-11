@@ -28,17 +28,16 @@ read -r _UNUSED_PAYLOAD <<<"$(cat)"
 PREAMBLE=$(cat <<'EOF'
 TTM harness preamble (auto-injected):
 
-The following five skills are mandatory-discipline and auto-load via the Skill tool:
-  env-bootstrap, session-logging, engineering-standards, verification-before-completion, commit
+**FRONT-LOAD INSTRUCTION**: Before responding to the user's prompt with any work, invoke these THREE skills sequentially as your first tool calls:
+  1. Skill('env-bootstrap') — MANDATORY, gated. Your first call must be this.
+  2. Skill('engineering-standards') — invoke after env-bootstrap, before any code/edit work. The Stop hook will demand it later anyway; invoking now avoids a mid-pivot truncation that can lose later skill calls.
+  3. Skill('verification-before-completion') — invoke now, BEFORE doing the work, not after. Same reason — front-loading bypasses the Stop-hook timing edge case.
 
-A PreToolUse gate enforces THREE of them mechanically:
-  - env-bootstrap MUST be your FIRST tool call (any other tool is denied until then).
-  - session-logging MUST fire before editing docs/sessions/*.md.
-  - commit MUST fire before `git add` / `git commit`.
+After those three fire, do the actual work. The remaining mandatory skills (session-logging, commit, repo-structure, docs-writing) fire naturally as their PreToolUse gates trigger on concrete actions.
 
-The path of least resistance is to invoke Skill('env-bootstrap') before doing any other work, then Skill('engineering-standards') / Skill('verification-before-completion') as their triggers match. The remaining two (session-logging, commit) fire when their concrete actions are needed.
+Why front-load: there's a benchmark-runner edge case where the Stop hook's bullet-list block can get truncated before the worker finishes pivoting. Invoking these three skills upfront moves the strict-engagement signal earlier in the turn, where it can't be lost.
 
-If a gate denies a tool call, the message will tell you which Skill to invoke. Bypass with TTM_DISABLE_HARNESS_HOOK=1 only when explicitly authorized.
+Bypass with TTM_DISABLE_HARNESS_HOOK=1 only when explicitly authorized.
 EOF
 )
 

@@ -110,6 +110,21 @@ if ! state_has "$SESSION_ID" env-bootstrap-fired; then
   exit 0
 fi
 
+# After env-bootstrap, front-load any prompt-suggested skills BEFORE any
+# other tool call. This bypasses the bench-system agent.stop bug that
+# can truncate Stop-hook pivots — by demanding these upfront, sentinels
+# are written before any agent.stop event. Block-once per skill via the
+# pretool-blocked-X sentinel, same pattern as Gate 5.
+for sk in refactor-plan glossary module-map test-first; do
+  if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
+     && ! state_has "$SESSION_ID" "${sk}-fired" \
+     && ! state_has "$SESSION_ID" "pretool-blocked-${sk}-frontload"; then
+    state_set "$SESSION_ID" "pretool-blocked-${sk}-frontload"
+    emit_deny "Harness gate: your prompt's routing match (${sk}) hasn't been invoked. Invoke Skill('${sk}') now BEFORE any other tool call — this front-loads the strict-engagement signal so it can't be truncated by a late Stop-hook pivot. After that fires, other tools are unblocked."
+    exit 0
+  fi
+done
+
 # ---- Gate 2: session-logging gates Edit/Write on docs/sessions/ -----------
 if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
   FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
