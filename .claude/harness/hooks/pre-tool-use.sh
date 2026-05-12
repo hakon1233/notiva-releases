@@ -67,6 +67,43 @@ emit_deny() {
 
 if [[ "$TOOL_NAME" == "Skill" ]]; then
   SKILL_NAME=$(echo "$PAYLOAD" | jq -r '.tool_input.skill // empty')
+
+  # Order gate: before skill-router has fired, only env-bootstrap and
+  # the universal mandatory skills (engineering-standards, verification-
+  # before-completion) are allowed. Test-first specifically is blocked
+  # because that's the one delegation scenarios race against — the
+  # router needs to decide whether to delegate to bug-fixer / bug-
+  # regression-tester before the worker fires test-first themselves.
+  # The other mandatory skills can fire freely as they don't conflict
+  # with delegation.
+  ROUTER_FIRED_FILE="runtime/.harness-state/skill-router-fired"
+  if [[ "${TTM_DISABLE_SKILL_ROUTER:-0}" != "1" ]] \
+     && [[ ! -f "$ROUTER_FIRED_FILE" ]] \
+     && ! state_has "$SESSION_ID" skill-router-invoked \
+     && [[ "$SKILL_NAME" == "test-first" ]]; then
+    emit_deny "Harness gate: invoke Agent(subagent_type='skill-router') before Skill('test-first'). The router decides whether this is a fix-yourself task or a delegation task — firing test-first early races that decision."
+    exit 0
+  fi
+
+  # Delegation guard: when the skill-router said this prompt requires a
+  # specialist agent (bug-fixer / bug-regression-tester), the worker
+  # must NOT invoke test-first / verification themselves — that's why
+  # the agent exists. Use the router's suggestion (prompt-suggested-X)
+  # as the signal, not the agent-fired sentinel — by the time the agent
+  # actually fires, the worker may have already invoked test-first.
+  # This makes the gate proactive instead of reactive.
+  PRE_DIR="runtime/.harness-state"
+  if [[ -f "$PRE_DIR/prompt-suggested-bug-fixer" ]] \
+     || [[ -f "$PRE_DIR/prompt-suggested-bug-regression-tester" ]] \
+     || state_has "$SESSION_ID" prompt-suggested-bug-fixer \
+     || state_has "$SESSION_ID" prompt-suggested-bug-regression-tester; then
+    case "$SKILL_NAME" in
+      test-first|verification-before-completion)
+        emit_deny "Harness gate: skill-router routed this prompt to a specialist agent (bug-fixer or bug-regression-tester). Do NOT invoke Skill('${SKILL_NAME}') yourself — dispatch the agent and let its work stand. The user explicitly delegated; doing the work in parallel defeats the purpose."
+        exit 0
+        ;;
+    esac
+  fi
   case "$SKILL_NAME" in
     env-bootstrap)        state_set "$SESSION_ID" env-bootstrap-fired ;;
     session-logging)      state_set "$SESSION_ID" session-logging-fired ;;
@@ -89,9 +126,48 @@ fi
 # before its Bash call lands.
 if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
   SUBAGENT=$(echo "$PAYLOAD" | jq -r '.tool_input.subagent_type // empty')
+  # Cross-agent guard: when the router suggested ONE agent and the worker
+  # tries to dispatch a DIFFERENT specialist agent on top, that's
+  # over-engagement. Only block specialist agents (bug-fixer /
+  # bug-regression-tester / spec-reviewer / code-quality-reviewer) —
+  # general-purpose, skill-router, and unrelated subagents pass through.
+  PRE_DIR="runtime/.harness-state"
+  case "$SUBAGENT" in
+    bug-fixer|bug-regression-tester|spec-reviewer|code-quality-reviewer)
+      ANY_ROUTED=0
+      for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer; do
+        if [[ -f "$PRE_DIR/prompt-suggested-${ag}" ]] || state_has "$SESSION_ID" "prompt-suggested-${ag}"; then
+          ANY_ROUTED=1
+          break
+        fi
+      done
+      if [[ "$ANY_ROUTED" == "1" ]] \
+         && [[ ! -f "$PRE_DIR/prompt-suggested-${SUBAGENT}" ]] \
+         && ! state_has "$SESSION_ID" "prompt-suggested-${SUBAGENT}"; then
+        emit_deny "Harness gate: skill-router did NOT suggest Agent(subagent_type='${SUBAGENT}') for this prompt. Dispatch only the agent(s) the router named — over-dispatching specialist agents is over-engagement."
+        exit 0
+      fi
+      # Hard mutual exclusion: bug-regression-tester (reproducer-only) and
+      # bug-fixer (full fix) cannot coexist on the same prompt — the
+      # reproducer-only request explicitly defers the fix. If the router
+      # accidentally suggested both (model eagerness), block bug-fixer.
+      if [[ "$SUBAGENT" == "bug-fixer" ]] \
+         && ([[ -f "$PRE_DIR/prompt-suggested-bug-regression-tester" ]] \
+             || state_has "$SESSION_ID" prompt-suggested-bug-regression-tester); then
+        emit_deny "Harness gate: skill-router suggested bug-regression-tester (reproducer-only request) — bug-fixer is mutually exclusive on this prompt. The user deferred the fix; do NOT dispatch bug-fixer."
+        exit 0
+      fi
+      ;;
+  esac
   if [[ "$SUBAGENT" == "skill-router" ]]; then
     state_set "$SESSION_ID" skill-router-invoked
   fi
+  case "$SUBAGENT" in
+    bug-fixer)              state_set "$SESSION_ID" bug-fixer-fired ;;
+    bug-regression-tester)  state_set "$SESSION_ID" bug-regression-tester-fired ;;
+    spec-reviewer)          state_set "$SESSION_ID" spec-reviewer-fired ;;
+    code-quality-reviewer)  state_set "$SESSION_ID" code-quality-reviewer-fired ;;
+  esac
 fi
 
 # Track tool-call patterns the Stop hook needs to know about. We don't
@@ -167,6 +243,14 @@ if [[ -d "$PRE_DIR" ]]; then
       state_set "$SESSION_ID" "prompt-suggested-${sk}"
     fi
   done
+  # Promote router-suggested AGENTS too. The agent gate wording differs
+  # (dispatch the agent, don't invoke a skill) so it has its own loop below.
+  for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer; do
+    if [[ -f "$PRE_DIR/prompt-suggested-${ag}" ]] \
+       && ! state_has "$SESSION_ID" "prompt-suggested-${ag}"; then
+      state_set "$SESSION_ID" "prompt-suggested-${ag}"
+    fi
+  done
 fi
 for sk in refactor-plan glossary module-map test-first; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
@@ -174,6 +258,25 @@ for sk in refactor-plan glossary module-map test-first; do
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}-frontload"; then
     state_set "$SESSION_ID" "pretool-blocked-${sk}-frontload"
     emit_deny "Harness gate: skill-router said your prompt requires Skill('${sk}'). Invoke it now BEFORE any other tool call. After that fires, other tools are unblocked."
+    exit 0
+  fi
+done
+# Agent-dispatch front-load. When the router suggested a specialist
+# agent, the worker must DISPATCH that agent (not do the work itself).
+# Block once per agent; allow the Task/Agent invocation through.
+for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer; do
+  if state_has "$SESSION_ID" "prompt-suggested-${ag}" \
+     && ! state_has "$SESSION_ID" "${ag}-fired" \
+     && ! state_has "$SESSION_ID" "pretool-blocked-${ag}-frontload"; then
+    # Allow Task/Agent invocation of THIS agent through.
+    if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
+      SUBAGENT=$(echo "$PAYLOAD" | jq -r '.tool_input.subagent_type // empty')
+      if [[ "$SUBAGENT" == "$ag" ]]; then
+        continue  # let it through; the tracker above will set ${ag}-fired
+      fi
+    fi
+    state_set "$SESSION_ID" "pretool-blocked-${ag}-frontload"
+    emit_deny "Harness gate: skill-router said your prompt requires Agent(subagent_type='${ag}'). Dispatch that agent now BEFORE any other tool call — the user explicitly delegated this work. Do NOT do it yourself."
     exit 0
   fi
 done

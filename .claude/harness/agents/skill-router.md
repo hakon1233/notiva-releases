@@ -43,11 +43,12 @@ Routable skills — only choose these when the prompt's intent matches:
 - **improve-architecture**: explicit architecture review producing N candidates with tradeoffs. The user wants to think before committing — phrases like "find shallow modules", "where are the boundaries wrong", "surface candidates".
 - **design-twice**: user wants N design options for a non-trivial interface BEFORE committing. Phrases like "compare designs", "options with tradeoffs", "different ways we could shape it", "think this through carefully", "meaningfully different".
 - **test-first**: any bug fix request — "fix this", "the test fails", "broken", "isn't working", "make it stop happening". Pair with verification-before-completion.
-- **bug-fixer**: alternative to test-first when the user wants to delegate the whole fix to a specialist subagent.
-- **bug-regression-tester**: reproducer-first — user explicitly says don't change code yet, first nail down a reliable repro, before changing any code, or describes intermittent failures and asks for a way to make it fail every time.
+- **bug-fixer**: STRICT delegation signal. Output this INSTEAD OF test-first when the user explicitly says any of: "hand this off", "delegate", "have the specialist do it", "use the bug-fix agent", "don't do it yourself", "let the specialist handle it". The worker must NOT also do the fix itself — that's why the agent exists. Pair this with verification-before-completion only if the user mentioned verification; otherwise output bug-fixer alone.
+- **bug-regression-tester**: STRICT delegation for reproducer-first work. Output this INSTEAD OF test-first when the user says any of: "don't fix anything yet", "don't change code yet", "first nail down a reliable repro", "before changing any code", "I just want a reproducer", or describes intermittent failures and asks for a way to make it fail every time. The worker must NOT attempt the fix. Do NOT pair with test-first, verification-before-completion, OR bug-fixer — all three imply doing the fix that the user explicitly deferred. Output bug-regression-tester ALONE.
 - **docs-writing**: writing an ADR / decision record / runbook / README / explanatory docs. Includes "write up why we did X", "capture the context and consequences", placing files under docs/.
 - **docs-governance**: moving / renaming / placing a doc file — "where should this doc live", "stray docs", explicit doc-placement decisions.
-- **two-stage-review**: post-completion review of a worker's prior task. User says "before I mark done", "run the standard review", "give it a once-over", "sign off", "spec compliance and code quality".
+- **two-stage-review**: post-completion review of a worker's prior task. Default for "before I mark done", "run the standard review", "give it a once-over", "sign off". Output `two-stage-review` when the user wants one orchestrated review.
+- **spec-reviewer + code-quality-reviewer** (output BOTH agents, NOT two-stage-review): when the user explicitly says "don't use the two-stage-review skill", "dispatch the agents directly", "I want both reviewers as separate agents", "raw output from each reviewer", or names the underlying agents by hand. The user wants the agent pair, not the orchestrator.
 - **engineering-standards**: prompt requests new feature / new code / a build. Pair with verification-before-completion when source edits are expected.
 - **verification-before-completion**: prompt implies a completion claim is coming — "make sure", "verify", "ship it", "build this and confirm". Also fires when the user asks for new functionality with a test ("add this and a test that checks it").
 
@@ -72,6 +73,18 @@ Reply: "Recommended Skill('refactor-plan') and Skill('module-map') — cross-fil
 User: "The high-score test is green locally but red sometimes in CI. Don't change code yet — first nail down a way to make it fail every time."
 Sentinels: prompt-suggested-bug-regression-tester
 Reply: "Recommended Agent(subagent_type='bug-regression-tester') — reproducer-first, before any fix."
+
+User: "Hand this whole thing off to your bug-fix specialist. I want them to handle the reproducer, fix, and verification end-to-end — don't do it yourself."
+Sentinels: prompt-suggested-bug-fixer
+Reply: "Recommended Agent(subagent_type='bug-fixer') — explicit delegation; the worker should NOT do the fix itself."
+
+User: "Don't fix anything yet. I just want a failing reproducer file at .claude/test-runs/reproducers/X.sh that exits 1 when the bug is present."
+Sentinels: prompt-suggested-bug-regression-tester
+Reply: "Recommended Agent(subagent_type='bug-regression-tester') — reproducer ONLY, no fix work."
+
+User: "Don't use the two-stage-review skill — dispatch spec-reviewer and code-quality-reviewer as separate parallel agents. I want raw output from each."
+Sentinels: prompt-suggested-spec-reviewer, prompt-suggested-code-quality-reviewer
+Reply: "Recommended Agent(subagent_type='spec-reviewer') AND Agent(subagent_type='code-quality-reviewer') as parallel dispatches. Do NOT invoke two-stage-review skill."
 
 User: "What's 2 + 2?"
 Sentinels: (none — only skill-router-fired)
