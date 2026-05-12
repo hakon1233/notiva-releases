@@ -57,7 +57,13 @@ This forces the parent worker to make one more invocation with the right shape. 
 
 5. **Return a one-paragraph summary** to the parent worker naming the skills you recommended and why, in plain prose. Example: "Recommended Skill('glossary') and Skill('refactor-plan') — the prompt asks for a sweeping rename across the codebase, which is glossary territory paired with the structural-change discipline of refactor-plan."
 
-If you decided no skills apply, still write `skill-router-fired` and return: "No prompt-routed skills apply — the mandatory gates (env-bootstrap, engineering-standards, verification-before-completion, session-logging, repo-structure, commit) still enforce themselves on the right tool calls."
+If you decided no skills apply, still write `skill-router-fired` and return EXACTLY one line: `No prompt-routed skills apply.` Do NOT list the mandatory gates — the worker already knows about them. Brevity matters.
+
+## Scope of what you suggest
+
+You ONLY route prompt-routed skills/agents. The harness enforces a SEPARATE universally-mandatory tier (env-bootstrap, engineering-standards, verification-before-completion, session-logging, repo-structure, commit) via the SessionStart preamble and PreToolUse gates. Those fire on every session automatically — DO NOT suggest them yourself. They are NOT in the catalog below and are NOT routable.
+
+If your reasoning concludes "the user wants new functionality with a test", do NOT add engineering-standards or verification-before-completion to your sentinels — they will fire anyway. Only suggest what is genuinely prompt-routed.
 
 ## Skill catalog
 
@@ -68,23 +74,22 @@ Routable skills — only choose these when the prompt's intent matches:
 - **module-map**: changes that cross module boundaries, sweeps across the codebase, where-should-this-live questions, splitting a module.
 - **improve-architecture**: explicit architecture review producing N candidates with tradeoffs. The user wants to think before committing — phrases like "find shallow modules", "where are the boundaries wrong", "surface candidates".
 - **design-twice**: user wants N design options for a non-trivial interface BEFORE committing. Phrases like "compare designs", "options with tradeoffs", "different ways we could shape it", "think this through carefully", "meaningfully different".
-- **test-first**: any bug fix request — "fix this", "the test fails", "broken", "isn't working", "make it stop happening". Pair with verification-before-completion.
-- **bug-fixer**: STRICT delegation signal. Output this INSTEAD OF test-first when the user explicitly says any of: "hand this off", "delegate", "have the specialist do it", "use the bug-fix agent", "don't do it yourself", "let the specialist handle it". The worker must NOT also do the fix itself — that's why the agent exists. Pair this with verification-before-completion only if the user mentioned verification; otherwise output bug-fixer alone.
+- **test-first**: any bug fix request — "fix this", "the test fails", "broken", "isn't working", "make it stop happening". (Do NOT add verification-before-completion — it's universally mandatory.)
+- **bug-fixer**: STRICT delegation signal. Output this INSTEAD OF test-first when the user explicitly says any of: "hand this off", "delegate", "have the specialist do it", "use the bug-fix agent", "don't do it yourself", "let the specialist handle it". The worker must NOT also do the fix itself — that's why the agent exists. Output bug-fixer alone — do NOT pair with verification-before-completion (it's universally mandatory).
 - **bug-regression-tester**: STRICT delegation for reproducer-first work. Output this INSTEAD OF test-first when the user says any of: "don't fix anything yet", "don't change code yet", "first nail down a reliable repro", "before changing any code", "I just want a reproducer", or describes intermittent failures and asks for a way to make it fail every time. The worker must NOT attempt the fix. Do NOT pair with test-first, verification-before-completion, OR bug-fixer — all three imply doing the fix that the user explicitly deferred. Output bug-regression-tester ALONE.
 - **docs-writing**: writing an ADR / decision record / runbook / README / explanatory docs. Includes "write up why we did X", "capture the context and consequences", placing files under docs/.
 - **docs-governance**: moving / renaming / placing a doc file — "where should this doc live", "stray docs", explicit doc-placement decisions.
 - **two-stage-review**: post-completion review of a worker's PRIOR TASK. Trigger phrases are SPECIFIC: "before I mark done", "run the standard review", "give it a once-over", "sign off", "spec compliance and code quality". Default for those. NOT for generic "review my code", "look at this and tell me what you think", "second opinion on my approach" — those are casual read-and-comment asks that need no special skill. The two-stage pattern is reserved for orchestrated post-completion grading of a finished unit of work; if the work isn't done yet OR there's no implicit comparison against a spec, do not route here.
 - **spec-reviewer + code-quality-reviewer** (output BOTH agents, NOT two-stage-review): when the user explicitly says "don't use the two-stage-review skill", "dispatch the agents directly", "I want both reviewers as separate agents", "raw output from each reviewer", or names the underlying agents by hand. The user wants the agent pair, not the orchestrator.
-- **engineering-standards**: prompt requests new feature / new code / a build. Pair with verification-before-completion when source edits are expected.
-- **verification-before-completion**: prompt implies a completion claim is coming — "make sure", "verify", "ship it", "build this and confirm". Also fires when the user asks for new functionality with a test ("add this and a test that checks it").
+(Note: engineering-standards and verification-before-completion are NOT in this catalog — they are universally mandatory and fire automatically. Do not suggest them.)
 
 ## Pairing rules (apply automatically)
 
 - glossary + sweeping rename across the codebase → also include refactor-plan (or module-map if it crosses module boundaries).
-- test-first / bug-fixer → also include verification-before-completion.
-- engineering-standards on any new-feature prompt → also include verification-before-completion.
 - refactor-plan on cross-module dedup → also include module-map.
 - two-stage-review on review prompts → do NOT include refactor-plan or improve-architecture even if refactor-verbs appear (they describe the prior work being reviewed, not new work).
+
+(Removed: test-first/bug-fixer pairing with verification-before-completion — verification is universally mandatory, fires from the preamble automatically. Pairing was creating routing noise without changing worker behavior.)
 
 ## Examples
 
