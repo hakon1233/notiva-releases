@@ -4,7 +4,7 @@ Auto-managed by `bootstrap-claude-template.sh`. Do **not** edit per project — 
 
 | Hook | Event | Purpose |
 |---|---|---|
-| `pre-tool-use.sh` | `PreToolUse` | Layer 1 — mechanically gates `env-bootstrap`, `session-logging`, `commit` via `permissionDecision: "deny"` + injected reason. Worker pivots to invoke the right Skill. |
+| `pre-tool-use.sh` | `PreToolUse` | Layer 1 — mechanically gates `env-bootstrap`, `session-logging`, `commit`, `dev-server` via `permissionDecision: "deny"` + injected reason. Worker pivots to invoke the right Skill. |
 | `session-start.sh` | `SessionStart` | Layer 2 — injects a short directive preamble explaining which skills are auto-loaded and which are gated. |
 | `lib/state.sh` | (sourced) | Per-session sentinel files under `runtime/.harness-state/<session_id>/`. |
 
@@ -22,13 +22,14 @@ PreToolUse `deny` is the only mechanism the harness can use without shipping glo
 
 ## What gets gated
 
-Three skills with concrete tool-call triggers:
+Four skills with concrete tool-call triggers:
 
 1. **env-bootstrap** — sentinel: any non-`Skill('env-bootstrap')` first tool call → deny.
 2. **session-logging** — sentinel: `Edit` / `Write` on a path matching `docs/sessions/*.md` without prior fire → deny.
 3. **commit** — sentinel: `Bash` command containing `git commit` or `git add` without prior fire → deny.
+4. **dev-server** — sentinel: `Bash` command containing `next dev` / `npx next dev` / `(npm|yarn|pnpm) (run )?dev` / bare `vite` / `wrangler dev` without prior fire → deny, UNLESS the same command line also contains `tmux new-session` or `tmux send-keys` (the skill's own pattern). Block-once: after the first block, subsequent dev-server commands pass so the worker can pivot. Prevents the orphaned-next-server / immortal-curl-poll failure mode logged 2026-05-13.
 
-The other two mandatory-discipline skills (`engineering-standards`, `verification-before-completion`) don't have a clean tool-call gate and stay description-only. The grader judges them on substituted behavior.
+The remaining mandatory-discipline skills (`engineering-standards`, `verification-before-completion`) don't have a clean tool-call gate and stay description-only. The grader judges them on substituted behavior.
 
 ## Fail-open
 

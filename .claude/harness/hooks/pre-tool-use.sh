@@ -112,6 +112,10 @@ if [[ "$TOOL_NAME" == "Skill" ]]; then
     repo-structure)       state_set "$SESSION_ID" repo-structure-fired ;;
     module-map)           state_set "$SESSION_ID" module-map-fired ;;
     docs-writing)         state_set "$SESSION_ID" docs-writing-fired ;;
+    dev-server)           state_set "$SESSION_ID" dev-server-fired ;;
+    explore-beyond-the-task) state_set "$SESSION_ID" explore-beyond-the-task-fired ;;
+    audit-entry-point-configs) state_set "$SESSION_ID" audit-entry-point-configs-fired ;;
+    read-invariants-not-just-code) state_set "$SESSION_ID" read-invariants-not-just-code-fired ;;
     verification-before-completion)
                           state_set "$SESSION_ID" verification-fired ;;
   esac
@@ -167,6 +171,11 @@ if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
     bug-regression-tester)  state_set "$SESSION_ID" bug-regression-tester-fired ;;
     spec-reviewer)          state_set "$SESSION_ID" spec-reviewer-fired ;;
     code-quality-reviewer)  state_set "$SESSION_ID" code-quality-reviewer-fired ;;
+    cross-reference-hunter) state_set "$SESSION_ID" cross-reference-hunter-fired ;;
+    invariant-hunter)       state_set "$SESSION_ID" invariant-hunter-fired ;;
+    error-handling-hunter)  state_set "$SESSION_ID" error-handling-hunter-fired ;;
+    boundary-hunter)        state_set "$SESSION_ID" boundary-hunter-fired ;;
+    surface-hunter)         state_set "$SESSION_ID" surface-hunter-fired ;;
   esac
 fi
 
@@ -237,7 +246,7 @@ fi
 # them to state sentinels for the rest of the gates to enforce.
 PRE_DIR="runtime/.harness-state"
 if [[ -d "$PRE_DIR" ]]; then
-  for sk in refactor-plan glossary module-map test-first; do
+  for sk in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
     if [[ -f "$PRE_DIR/prompt-suggested-${sk}" ]] \
        && ! state_has "$SESSION_ID" "prompt-suggested-${sk}"; then
       state_set "$SESSION_ID" "prompt-suggested-${sk}"
@@ -245,14 +254,45 @@ if [[ -d "$PRE_DIR" ]]; then
   done
   # Promote router-suggested AGENTS too. The agent gate wording differs
   # (dispatch the agent, don't invoke a skill) so it has its own loop below.
-  for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer; do
+  for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer \
+            cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
     if [[ -f "$PRE_DIR/prompt-suggested-${ag}" ]] \
        && ! state_has "$SESSION_ID" "prompt-suggested-${ag}"; then
       state_set "$SESSION_ID" "prompt-suggested-${ag}"
     fi
   done
 fi
-for sk in refactor-plan glossary module-map test-first; do
+
+# ---- Hunter-coordination gate (0.14.2) ----------------------------------
+# When the router suggested hunter agents and not all of them have fired,
+# block every non-Agent tool. This forces the worker to finish dispatching
+# the hunter set before doing any parallel exploration. The worker can
+# only Agent/Task dispatch (to fire the rest of the hunters) — and once
+# all suggested hunters have fired, this gate stops firing and the worker
+# can read findings + Edit normally.
+#
+# Hunter subagent sessions are unaffected because Claude Code's PreToolUse
+# hooks don't fire for subagent contexts.
+HUNTER_PENDING=0
+HUNTER_ALL_FIRED=1
+for hunter in cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
+  if state_has "$SESSION_ID" "prompt-suggested-${hunter}"; then
+    HUNTER_PENDING=1
+    if ! state_has "$SESSION_ID" "${hunter}-fired"; then
+      HUNTER_ALL_FIRED=0
+    fi
+  fi
+done
+if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "0" ]]; then
+  case "$TOOL_NAME" in
+    Agent|Task) ;;  # let hunter dispatches through
+    *)
+      emit_deny "Harness gate: skill-router suggested the hunter agents for this audit prompt and not all have fired yet. Dispatch the remaining hunters via Agent(subagent_type='<hunter-name>') BEFORE any Bash/Read/Grep/Glob/Edit/Write/Skill call — the hunters do the enumeration and return structured JSON findings. After all 5 fire, this gate stops firing and you can consolidate + fix. Trying to explore in parallel with the hunters wastes budget and is what this gate exists to prevent."
+      exit 0
+      ;;
+  esac
+fi
+for sk in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
      && ! state_has "$SESSION_ID" "${sk}-fired" \
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}-frontload"; then
@@ -304,6 +344,32 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
   fi
 fi
 
+# ---- Gate 6: dev-server gates long-lived dev-server invocations ----------
+# Prevents the foreground-exec / background-sleep-kill anti-pattern that
+# leaves orphaned next-server / vite processes holding ports while the
+# parent shell hangs on `wait`. The dev-server skill owns the named
+# tmux session lifecycle; everything else must route through it.
+#
+# Match `next dev`, `npx next dev`, `npm/yarn/pnpm run dev`, `npm/yarn/pnpm
+# dev`, bare `vite`, `wrangler dev`. Allow when:
+#   - dev-server-fired sentinel is set (skill has been invoked), OR
+#   - the same command line contains `tmux new-session` or `tmux send-keys`
+#     (the skill's own pattern — running the dev command inside tmux).
+# Block-once: after the first block, allow to pass so the worker can
+# pivot to invoking the skill and not get re-blocked.
+if [[ "$TOOL_NAME" == "Bash" ]] \
+   && ! state_has "$SESSION_ID" dev-server-fired \
+   && ! state_has "$SESSION_ID" pretool-blocked-dev-server; then
+  COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_input.command // empty')
+  if echo "$COMMAND" | grep -qE '(^|[^a-zA-Z0-9_-])(npx[[:space:]]+next[[:space:]]+dev|next[[:space:]]+dev|(npm|yarn|pnpm)[[:space:]]+(run[[:space:]]+)?dev|vite|wrangler[[:space:]]+dev)($|[^a-zA-Z0-9_-])'; then
+    if ! echo "$COMMAND" | grep -qE 'tmux[[:space:]]+(new-session|send-keys)'; then
+      state_set "$SESSION_ID" pretool-blocked-dev-server
+      emit_deny "Harness gate: long-lived dev servers (next dev / npm run dev / vite / wrangler dev) must run inside a named tmux session owned by Skill('dev-server'). Invoke that skill instead — it owns the tmux-session lifecycle (project-scoped name, idempotent has-session check) and prevents the orphaned-next-server / immortal-curl-poll failure mode from 2026-05-13. After it fires, dev-server commands are unblocked."
+      exit 0
+    fi
+  fi
+fi
+
 # ---- Gate 5: UserPromptSubmit→PreToolUse bridge --------------------------
 # When the UserPromptSubmit hook detected a routing intent (e.g. "extract"
 # in the prompt → refactor-plan), it writes prompt-suggested-<skill>
@@ -317,7 +383,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
     */runtime/*|*/.git/*|*/.claude/*|*/docs/*|docs/*) ;;
     *)
       # Only enforce on non-docs source edits.
-      for skill in refactor-plan glossary module-map test-first; do
+      for skill in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
         if state_has "$SESSION_ID" "prompt-suggested-${skill}" \
            && ! state_has "$SESSION_ID" "${skill}-fired" \
            && ! state_has "$SESSION_ID" "pretool-blocked-${skill}"; then

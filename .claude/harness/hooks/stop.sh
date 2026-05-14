@@ -91,7 +91,7 @@ fi
 # runtime/.harness-state/; check both the file (router output) and
 # state-lib sentinel (PreToolUse-promoted copy).
 PRE_DIR="runtime/.harness-state"
-for sk in refactor-plan glossary module-map test-first; do
+for sk in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
   suggested=0
   [[ -f "$PRE_DIR/prompt-suggested-${sk}" ]] && suggested=1
   state_has "$SESSION_ID" "prompt-suggested-${sk}" && suggested=1
@@ -99,6 +99,17 @@ for sk in refactor-plan glossary module-map test-first; do
      && ! state_has "$SESSION_ID" "${sk}-fired" \
      && ! state_has "$SESSION_ID" "pretool-blocked-${sk}"; then
     violations+=("Skill('${sk}') — skill-router said this applies to your prompt. Even if you handled the task with text only, invoke it briefly to confirm you considered its discipline before ending the turn.")
+  fi
+done
+
+# Hunter-agent bridge: same shape, for the parallel hunter agents.
+for hunter in cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
+  suggested=0
+  [[ -f "$PRE_DIR/prompt-suggested-${hunter}" ]] && suggested=1
+  state_has "$SESSION_ID" "prompt-suggested-${hunter}" && suggested=1
+  if [[ "$suggested" == "1" ]] \
+     && ! state_has "$SESSION_ID" "${hunter}-fired"; then
+    violations+=("Agent(subagent_type='${hunter}') — skill-router suggested this hunter and it has not fired. Dispatch it before ending the turn; the hunters are read-only and return JSON findings the main worker is meant to consolidate.")
   fi
 done
 

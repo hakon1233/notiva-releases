@@ -1,8 +1,8 @@
 {
-  "template_commit": "af2a354",
-  "template_commit_date": "2026-05-12T18:55:35+02:00",
+  "template_commit": "768eac1",
+  "template_commit_date": "2026-05-14T15:56:58+02:00",
   "bootstrap_version": "2026.04.24b",
-  "applied_at": "2026-05-12T17:04:50Z",
-  "source": "/Users/openhakon/openclaw/repos/task-terminal-manager",
+  "applied_at": "2026-05-14T14:08:10Z",
+  "source": "/Users/openhakon/projects/work/meta-harness-mvp",
   "layout": "layered-v2"
 }
