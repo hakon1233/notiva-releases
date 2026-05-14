@@ -315,30 +315,12 @@ if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "1" ]] \
   esac
 fi
 
-# Gate C — restricted-post-hunter exploration:
-# After hunters fire AND findings are Read, allow editing but BLOCK
-# exploration-shaped tools/commands so the worker can't burn 180 turns
-# re-greping the codebase. Whitelist: Read, Edit, Write, Skill, Agent, Task,
-# specific Bash patterns (git, npm/npx/yarn/pnpm test, tsc, vitest, jest,
-# pytest, cargo test, node --test, basic file ops).
-if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "1" ]] \
-   && state_has "$SESSION_ID" hunter-findings-read; then
-  case "$TOOL_NAME" in
-    Grep|Glob)
-      emit_deny "Harness gate (restricted post-hunter): Grep/Glob disabled now that all hunters have fired and you've Read the consolidated findings. The hunters already enumerated; use Read on the specific file:line they cite, Edit to fix, then test. If you genuinely need to grep for one symbol the hunters missed, do it via Bash (\`grep <pattern> <single-file>\`) — but the hunters are usually enough."
-      exit 0
-      ;;
-    Bash)
-      COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_input.command // empty')
-      # Block exploration-shaped Bash commands (recursive search, broad listing).
-      # The patterns are deliberately narrow — typical fix-mode commands pass.
-      if echo "$COMMAND" | grep -qE '(^|[[:space:]&;|`])(grep[[:space:]]+-r|grep[[:space:]]+-R|grep[[:space:]]+--recursive|find[[:space:]]+[^|]*-type[[:space:]]+f|find[[:space:]]+[^|]*-name|rg[[:space:]]|ag[[:space:]]|curl[[:space:]]|ls[[:space:]]+-R|ls[[:space:]]+-lR)'; then
-        emit_deny "Harness gate (restricted post-hunter): broad-search Bash command (grep -r / find -type / rg / ag / curl / ls -R) is blocked now that hunters returned findings and you've Read them. Read the specific file:line from hunter-findings.md and Edit; only narrow file-targeted commands are allowed."
-        exit 0
-      fi
-      ;;
-  esac
-fi
+# Gate C (restricted post-hunter exploration) was REMOVED in 0.15.3 — the
+# previous version's tight restriction on Grep/Glob/Bash after hunters fired
+# was strangling the worker's baseline exploration that catches BH-005,
+# BH-012, BH-014, BH-017. Hybrid design: hunters AUGMENT baseline
+# exploration; they do NOT replace it. After findings are Read the worker
+# is back to normal mode.
 for sk in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
      && ! state_has "$SESSION_ID" "${sk}-fired" \
