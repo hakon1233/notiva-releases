@@ -55,9 +55,9 @@ RESPONSE=$(echo "$PAYLOAD" | jq -r '
 # Try to locate the JSON block inside the response (hunters wrap in ```json fences).
 # Strategy: extract everything between the first '{' and the matching closing '}'.
 # We use python for reliable balanced-brace extraction since bash regex isn't.
-FINDINGS_MD=$(python3 - <<PY 2>/dev/null
-import json, re, sys
-text = """$RESPONSE"""
+FINDINGS_MD=$(RESPONSE="$RESPONSE" python3 - <<'PY' 2>/dev/null
+import json, re, sys, os
+text = os.environ.get("RESPONSE", "")
 # Find a JSON object that has "lens" and "findings" keys.
 # Try fenced first, then bare.
 m = re.search(r'\`\`\`json\s*(\{[\s\S]*?\})\s*\`\`\`', text)
