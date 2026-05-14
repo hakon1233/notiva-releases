@@ -102,17 +102,6 @@ for sk in refactor-plan glossary module-map test-first explore-beyond-the-task a
   fi
 done
 
-# Hunter-agent bridge: same shape, for the parallel hunter agents.
-for hunter in cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
-  suggested=0
-  [[ -f "$PRE_DIR/prompt-suggested-${hunter}" ]] && suggested=1
-  state_has "$SESSION_ID" "prompt-suggested-${hunter}" && suggested=1
-  if [[ "$suggested" == "1" ]] \
-     && ! state_has "$SESSION_ID" "${hunter}-fired"; then
-    violations+=("Agent(subagent_type='${hunter}') — skill-router suggested this hunter and it has not fired. Dispatch it before ending the turn; the hunters are read-only and return JSON findings the main worker is meant to consolidate.")
-  fi
-done
-
 # If violations remain on FIRST fire, block-once and emit the bullet list.
 # After the worker pivots and (hopefully) invokes the listed skills, the
 # next stop attempt re-evaluates violations from scratch.
