@@ -102,6 +102,27 @@ for sk in refactor-plan glossary module-map test-first explore-beyond-the-task a
   fi
 done
 
+# Hunter bridge: each hunter the router suggested must have fired.
+for hunter in cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
+  suggested=0
+  [[ -f "$PRE_DIR/prompt-suggested-${hunter}" ]] && suggested=1
+  state_has "$SESSION_ID" "prompt-suggested-${hunter}" && suggested=1
+  if [[ "$suggested" == "1" ]] \
+     && ! state_has "$SESSION_ID" "${hunter}-fired"; then
+    violations+=("Agent(subagent_type='${hunter}') — skill-router suggested this hunter; dispatch it. The hunters run read-only and return structured findings the PostToolUse hook consolidates for you.")
+  fi
+done
+
+# Hunter findings file read bridge: if hunters fired and the consolidated
+# file exists, the worker should have Read it before turn-stop. (The
+# PreToolUse force-read gate normally enforces this on the Edit path, but
+# if the worker ends the turn text-only without Editing, the gate never
+# fired — so check at Stop too.)
+if [[ -f "runtime/.harness-state/hunter-findings.md" ]] \
+   && ! state_has "$SESSION_ID" hunter-findings-read; then
+  violations+=("Read('runtime/.harness-state/hunter-findings.md') — hunter findings were consolidated for this session but never Read. The hunters did the enumeration; reading their output is how you act on it.")
+fi
+
 # If violations remain on FIRST fire, block-once and emit the bullet list.
 # After the worker pivots and (hopefully) invokes the listed skills, the
 # next stop attempt re-evaluates violations from scratch.

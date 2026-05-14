@@ -171,6 +171,22 @@ if [[ "$TOOL_NAME" == "Task" || "$TOOL_NAME" == "Agent" ]]; then
     bug-regression-tester)  state_set "$SESSION_ID" bug-regression-tester-fired ;;
     spec-reviewer)          state_set "$SESSION_ID" spec-reviewer-fired ;;
     code-quality-reviewer)  state_set "$SESSION_ID" code-quality-reviewer-fired ;;
+    cross-reference-hunter) state_set "$SESSION_ID" cross-reference-hunter-fired ;;
+    invariant-hunter)       state_set "$SESSION_ID" invariant-hunter-fired ;;
+    error-handling-hunter)  state_set "$SESSION_ID" error-handling-hunter-fired ;;
+    boundary-hunter)        state_set "$SESSION_ID" boundary-hunter-fired ;;
+    surface-hunter)         state_set "$SESSION_ID" surface-hunter-fired ;;
+  esac
+fi
+
+# Track Read calls on the consolidated findings file (used by the
+# force-read gate below). The path is set by the PostToolUse hook.
+if [[ "$TOOL_NAME" == "Read" ]]; then
+  FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+  case "$FILE_PATH" in
+    */runtime/.harness-state/hunter-findings.md|runtime/.harness-state/hunter-findings.md)
+      state_set "$SESSION_ID" hunter-findings-read
+      ;;
   esac
 fi
 
@@ -249,12 +265,79 @@ if [[ -d "$PRE_DIR" ]]; then
   done
   # Promote router-suggested AGENTS too. The agent gate wording differs
   # (dispatch the agent, don't invoke a skill) so it has its own loop below.
-  for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer; do
+  for ag in bug-fixer bug-regression-tester spec-reviewer code-quality-reviewer \
+            cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
     if [[ -f "$PRE_DIR/prompt-suggested-${ag}" ]] \
        && ! state_has "$SESSION_ID" "prompt-suggested-${ag}"; then
       state_set "$SESSION_ID" "prompt-suggested-${ag}"
     fi
   done
+fi
+
+# ---- Hunter-coordination + forced-read + restricted-mode gates ------------
+# Compute hunter state once:
+HUNTER_PENDING=0
+HUNTER_ALL_FIRED=1
+for hunter in cross-reference-hunter invariant-hunter error-handling-hunter boundary-hunter surface-hunter; do
+  if state_has "$SESSION_ID" "prompt-suggested-${hunter}"; then
+    HUNTER_PENDING=1
+    if ! state_has "$SESSION_ID" "${hunter}-fired"; then
+      HUNTER_ALL_FIRED=0
+    fi
+  fi
+done
+
+# Gate A — coordination (during hunter dispatch):
+# Hunters pending and not all fired → block every non-Agent tool. Forces the
+# worker to finish dispatching all 5 hunters before any other action.
+if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "0" ]]; then
+  case "$TOOL_NAME" in
+    Agent|Task) ;;  # let dispatch through
+    *)
+      emit_deny "Harness gate (hunter dispatch): not all hunter agents have fired yet. Dispatch the remaining hunter via Agent(subagent_type='<hunter>') BEFORE any other tool call. The PostToolUse hook will consolidate their findings into runtime/.harness-state/hunter-findings.md once they all return."
+      exit 0
+      ;;
+  esac
+fi
+
+# Gate B — force-read consolidated findings (after dispatch, before editing):
+# All hunters fired, hunter-findings.md exists, but worker hasn't Read it yet.
+# Block Edit/Write/Grep/Glob/Bash (with grep|find|curl) until it does.
+if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "1" ]] \
+   && [[ -f "runtime/.harness-state/hunter-findings.md" ]] \
+   && ! state_has "$SESSION_ID" hunter-findings-read; then
+  case "$TOOL_NAME" in
+    Read|Skill|Agent|Task) ;;  # let the worker Read the findings (and others) through
+    *)
+      emit_deny "Harness gate (force-read findings): all hunters fired and their findings were consolidated into runtime/.harness-state/hunter-findings.md by the PostToolUse hook. Read that file BEFORE any Edit / Write / Grep / Glob / Bash. The file contains every finding with file:line:evidence — you do NOT need to re-explore. Read it, then start fixing the highest-severity findings."
+      exit 0
+      ;;
+  esac
+fi
+
+# Gate C — restricted-post-hunter exploration:
+# After hunters fire AND findings are Read, allow editing but BLOCK
+# exploration-shaped tools/commands so the worker can't burn 180 turns
+# re-greping the codebase. Whitelist: Read, Edit, Write, Skill, Agent, Task,
+# specific Bash patterns (git, npm/npx/yarn/pnpm test, tsc, vitest, jest,
+# pytest, cargo test, node --test, basic file ops).
+if [[ "$HUNTER_PENDING" == "1" && "$HUNTER_ALL_FIRED" == "1" ]] \
+   && state_has "$SESSION_ID" hunter-findings-read; then
+  case "$TOOL_NAME" in
+    Grep|Glob)
+      emit_deny "Harness gate (restricted post-hunter): Grep/Glob disabled now that all hunters have fired and you've Read the consolidated findings. The hunters already enumerated; use Read on the specific file:line they cite, Edit to fix, then test. If you genuinely need to grep for one symbol the hunters missed, do it via Bash (\`grep <pattern> <single-file>\`) — but the hunters are usually enough."
+      exit 0
+      ;;
+    Bash)
+      COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_input.command // empty')
+      # Block exploration-shaped Bash commands (recursive search, broad listing).
+      # The patterns are deliberately narrow — typical fix-mode commands pass.
+      if echo "$COMMAND" | grep -qE '(^|[[:space:]&;|`])(grep[[:space:]]+-r|grep[[:space:]]+-R|grep[[:space:]]+--recursive|find[[:space:]]+[^|]*-type[[:space:]]+f|find[[:space:]]+[^|]*-name|rg[[:space:]]|ag[[:space:]]|curl[[:space:]]|ls[[:space:]]+-R|ls[[:space:]]+-lR)'; then
+        emit_deny "Harness gate (restricted post-hunter): broad-search Bash command (grep -r / find -type / rg / ag / curl / ls -R) is blocked now that hunters returned findings and you've Read them. Read the specific file:line from hunter-findings.md and Edit; only narrow file-targeted commands are allowed."
+        exit 0
+      fi
+      ;;
+  esac
 fi
 for sk in refactor-plan glossary module-map test-first explore-beyond-the-task audit-entry-point-configs read-invariants-not-just-code; do
   if state_has "$SESSION_ID" "prompt-suggested-${sk}" \
