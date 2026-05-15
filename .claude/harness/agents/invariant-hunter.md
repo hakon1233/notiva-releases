@@ -96,6 +96,16 @@ Use the schema below. No prose outside the JSON. Confidence:
   and it looks like a violation.
 - `low` — assertion is fuzzy or you only skimmed one side.
 
+**Cap the `findings` array at ≤ 8 entries per dispatch.** Prefer the
+highest-confidence drifts (`high` first, then `medium`). If more than
+8 candidates exist, list only the top 8 in the JSON and put any
+remaining brief one-line summaries in an `overflow_notes` array
+(strings, not objects). Workers downstream have a finite action
+budget — an exhaustive 20-finding list is worse than a curated top-8,
+because the worker processes top-to-bottom and stops after the first
+few it can finish, leaving real-defect findings from other hunters
+unfixed.
+
 ## Output schema (exactly this)
 
 ```json
