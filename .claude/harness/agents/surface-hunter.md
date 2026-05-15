@@ -54,10 +54,19 @@ finding by itself.)
 
 ### 4 — Three visible-symptom classes to flag
 
-**(a) Unstyled rendering.** If the HTML has no `<link rel="stylesheet">`,
-no `<style>` tag, and `class=` attributes that look unprocessed (raw
-Tailwind classes like `bg-blue-500` rendered without a stylesheet
-elsewhere) — the app is not loading CSS.
+**(a) Unstyled rendering / missing imports.** Curl the home page,
+grep its HTML for `<link rel="stylesheet">` tags and `<style>`
+blocks, AND grep the root layout source file (`src/app/layout.tsx`
+for Next.js app router; equivalent root component for other frameworks)
+for CSS `import` lines. If the root layout source imports a file
+(e.g. `import './globals.css'`) but no corresponding stylesheet
+appears in the rendered HTML, that's a finding. If the imports are
+**commented out** — i.e., the line is `// import './globals.css'`
+rather than active — that IS the bug; flag it. Don't just say
+"stylesheet present"; list which stylesheets, which imports, and
+where they disagree. Also flag the original symptom: `class=`
+attributes that look unprocessed (raw Tailwind classes like
+`bg-blue-500` rendered without a stylesheet elsewhere).
 
 **(b) Visibly broken navigation.** If a `<nav>` / `<aside>` / sidebar
 contains `<a href="/X">` links and curling `/X` returns 404, the link is

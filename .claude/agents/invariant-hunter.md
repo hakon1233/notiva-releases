@@ -26,6 +26,20 @@ grep -rnE '\b(always|never|must|should|invariant|leftmost|rightmost|first|last|o
 (Adjust the path globs to the repo's source roots.) Every hit is a
 candidate to investigate.
 
+### 1.5 — Exhaustive JSDoc-as-spec sweep (do every match, no spot-checks)
+
+After the initial assertion-word grep, for EVERY JSDoc block on an
+**exported** function/method/class whose JSDoc body contains "returns",
+"yields", "guarantees", "always", "sorted", "in order", "ordered",
+"never", or "must": read the function body in full and verify the
+assertion holds. A finding is generated for each mismatch.
+
+Spot-checks miss findings. Exhaustive sweep does not — if the function
+list is N, generate N reads. The audit budget is yours; use it. (Scope
+to exported symbols only — not internal helpers — to keep the budget
+tractable on large modules. If the list is still too long, prioritize
+files modified by recent commits.)
+
 ### 2 — For each candidate, read context
 
 Read the surrounding ~20 lines. The question is always the same:
