@@ -1,6 +1,6 @@
 ---
 name: refactor-plan
-description: Structured refactoring approach that preserves behavior and public APIs.
+description: "Before pulling duplicated logic into a shared helper, extracting a function, splitting a class, or any cross-file dedup/restructure that preserves behavior: invoke `Skill('refactor-plan')` BEFORE editing — it owns the discipline of identifying the seams, planning the move, keeping the public API stable, and verifying no behavior change. Trigger phrases: 'extract this into a helper', 'pull the duplicated logic out', 'dedup these', 'split this module', 'restructure this'."
 ---
 
 ## Before you start

@@ -54,11 +54,32 @@ If a file has a JSDoc claiming "the leftmost tab is X" and the JSX text
 node below says "Y" — that's a drift. Same for "default route", "first
 item", etc.
 
-### 4 — ADR/README invariants
+### 4 — In-tree spec doc invariants (exhaustive — not just ADRs)
 
-If `docs/decisions/<ADR>.md` or a README says "X must Y" and the code
-doesn't Y, flag it. Same severity as inline JSDoc; arguably worse because
-ADRs are load-bearing.
+JSDoc isn't the only place specs live. Walk the in-tree spec docs as
+aggressively as you walk JSDoc. The targets:
+
+- `AGENTS.md`, `CLAUDE.md`, `SOUL.md` — high-level contracts.
+- `README.md` (any depth) — feature claims and behavior promises.
+- `docs/system/**`, `docs/decisions/<ADR>.md` — architectural invariants.
+- Any `*.spec.md`, `*-spec.md`, `INVARIANTS.md`, `CONTRACT.md` if present.
+
+Grep each for assertion verbs: "must", "always", "never", "first",
+"leftmost", "default", "expected", "guaranteed", "in order", "sorted".
+For every hit, identify the implementation site the assertion refers to
+(file path is usually in the same paragraph or section heading) and
+read the implementation to verify. A drift between a feature claim in
+README and what the code does is the SAME severity as a JSDoc drift —
+arguably worse because spec docs are load-bearing for users + future
+agents who read them as the authoritative contract.
+
+Specific bug classes this catches that JSDoc-only sweeps miss:
+- "X is always leftmost" claims in a feature spec when the JSX order
+  has drifted.
+- "Default port is N" in README when the package.json `dev` script
+  uses a different N.
+- "Priority rank ordering: HIGH > MEDIUM > LOW" in a spec doc when the
+  comparator returns the inverse.
 
 ### 5 — Emit findings
 
