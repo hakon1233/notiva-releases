@@ -63,6 +63,12 @@ aggressively as you walk JSDoc. The targets:
 - `README.md` (any depth) — feature claims and behavior promises.
 - `docs/system/**`, `docs/decisions/<ADR>.md` — architectural invariants.
 - Any `*.spec.md`, `*-spec.md`, `INVARIANTS.md`, `CONTRACT.md` if present.
+- `docs/sessions/**/*.md` — session-log "Objective:" lines record
+  user-voiced contracts at the moment work was scoped. Treat every
+  `**Objective:**` line as an assertion: the user named what the code
+  should do. Grep these for assertion verbs the same way you grep
+  AGENTS.md. Phrases like "X should be the leftmost tab", "X must
+  always Y", "X first / top / default" are common.
 
 Grep each for assertion verbs: "must", "always", "never", "first",
 "leftmost", "default", "expected", "guaranteed", "in order", "sorted".
