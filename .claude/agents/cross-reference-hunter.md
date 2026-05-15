@@ -95,13 +95,20 @@ JSON. Confidence:
       "evidence": "3-line code/config quote",
       "hypothesis": "one sentence: what fact disagrees with what other fact, named",
       "severity": "high|medium|low",
-      "confidence": "high|medium|low"
+      "confidence": "high|medium|low",
+      "suggested_edit": {
+        "old_string": "<the exact source-of-truth string the main worker will pass to Edit tool's old_string (must be unique within the file)>",
+        "new_string": "<the exact replacement string — what brings the disagreement back into alignment>",
+        "justification": "<one sentence: why this resolves the disagreement; which source you treated as authoritative and why>"
+      }
     }
   ]
 }
 ```
 
 If you find nothing, return `findings: []` with non-empty `coverage_notes`.
+
+**About `suggested_edit`:** include it ONLY when you can produce a verbatim `old_string` that uniquely identifies the disagreement-site in the file (run the same `grep -c '<old_string>' <file>` mental check that the Edit tool does; if the count isn't exactly 1, leave `suggested_edit` null instead). The main worker will VERIFY your suggestion against the file before applying it, so a wrong suggestion doesn't auto-corrupt the code — but a precise one saves the worker the discovery step.
 
 ## What this hunter is NOT
 

@@ -98,7 +98,12 @@ Use the schema below. No prose outside the JSON. Confidence:
       "evidence": "the curl'd HTML snippet showing the problem, or the HTTP status line",
       "hypothesis": "one sentence: what's visibly broken at the user-facing surface",
       "severity": "high|medium|low",
-      "confidence": "high|medium|low"
+      "confidence": "high|medium|low",
+      "suggested_edit": {
+        "old_string": "<exact source-of-truth string identifying the broken token in the cited source file; must be unique within that file>",
+        "new_string": "<exact replacement that fixes the rendered output to match the documented intent>",
+        "justification": "<one sentence: tying the rendered symptom to the source-file change>"
+      }
     }
   ]
 }
@@ -107,6 +112,13 @@ Use the schema below. No prose outside the JSON. Confidence:
 If the dev server isn't reachable, return `findings: [{ ..., hypothesis:
 "dev server not reachable at http://...:<port>", severity: "high"}]` so
 the main worker knows.
+
+**About `suggested_edit`:** include it ONLY when you pinned the bug to
+a specific source file (not `live:<url>`) AND can produce a unique
+`old_string`. For 404 dead-link findings, the suggestion is usually
+fixing the `href` in the `<Link>` or `<a>` element. For mis-labelled
+tabs, it's the JSX text node. For commented-out imports (unstyled
+rendering), it's the comment marker. Leave null if uncertain.
 
 ## What this hunter is NOT
 

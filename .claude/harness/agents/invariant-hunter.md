@@ -69,7 +69,12 @@ Use the schema below. No prose outside the JSON. Confidence:
       "evidence": "the JSDoc/comment text + the contradicting code, quoted",
       "hypothesis": "one sentence: the assertion vs the contradiction",
       "severity": "high|medium|low",
-      "confidence": "high|medium|low"
+      "confidence": "high|medium|low",
+      "suggested_edit": {
+        "old_string": "<exact source-of-truth string identifying the code that violates the invariant; must be unique within the file>",
+        "new_string": "<exact replacement that brings the code back into line with the invariant>",
+        "justification": "<one sentence: which invariant the code violates and how this restores compliance>"
+      }
     }
   ]
 }
@@ -77,6 +82,12 @@ Use the schema below. No prose outside the JSON. Confidence:
 
 If nothing found, `findings: []` with `coverage_notes` listing what you
 checked.
+
+**About `suggested_edit`:** include it ONLY when the fix is to align the
+code with the assertion (the assertion is the spec, the code is wrong)
+AND when you can produce a unique-within-the-file `old_string`. If the
+assertion is genuinely stale (code has moved on, JSDoc should be
+updated), leave `suggested_edit` null and explain in the hypothesis.
 
 ## What this hunter is NOT
 
