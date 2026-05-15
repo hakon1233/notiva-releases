@@ -40,6 +40,15 @@ case "$SUBAGENT" in
   *) exit 0 ;;
 esac
 
+# Idempotency: if this hunter has already consolidated once in this run,
+# skip. The Phase-1 Gate-A bounce can make the worker re-dispatch the same
+# hunter; without this guard, hunter-findings.md grows duplicate sections
+# per lens. The ${SUBAGENT}-consolidated sentinel is written at the end of
+# this script on first successful consolidation.
+if [[ -f "runtime/.harness-state/${SUBAGENT}-consolidated" ]]; then
+  exit 0
+fi
+
 # Extract the tool_response text. Claude Code passes it as either a string
 # or an array of content blocks; handle both shapes.
 RESPONSE=$(echo "$PAYLOAD" | jq -r '
