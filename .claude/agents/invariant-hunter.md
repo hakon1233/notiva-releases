@@ -29,10 +29,31 @@ candidate to investigate.
 ### 1.5 — Exhaustive JSDoc-as-spec sweep (do every match, no spot-checks)
 
 After the initial assertion-word grep, for EVERY JSDoc block on an
-**exported** function/method/class whose JSDoc body contains "returns",
-"yields", "guarantees", "always", "sorted", "in order", "ordered",
-"never", or "must": read the function body in full and verify the
-assertion holds. A finding is generated for each mismatch.
+**exported** function/method/class whose JSDoc body contains any of the
+verbs below, read the function body in full and verify the assertion
+holds. A finding is generated for each mismatch.
+
+Core assertion vocabulary:
+- "returns", "yields", "guarantees", "guaranteed", "always", "sorted",
+  "in order", "ordered", "never", "must", "expected", "expects".
+
+Extended assertion vocabulary (natural-English contract phrasings
+that the core list misses — added r14 from BH-017 retrospective):
+- **Routing / destination**: "go to" / "goes to" / "sent to" — e.g.
+  "errors go to console.warn".
+- **Logging / emission**: "logged" / "logs to" / "fires" / "emits" —
+  e.g. "failures are logged", "emits a warn event".
+- **Throwing**: "throws" — e.g. "throws on invalid input".
+- **Calling**: "called" / "calls" — e.g. "calls onSuccess with X".
+- **Blocking semantics**: "non-blocking" / "blocking".
+- **Positional invariants**: "first" / "last" — e.g. "first element
+  is the active one".
+- **Count invariants**: "exactly N" — e.g. "exactly one match".
+
+The expanded vocabulary covers most natural English ways doc authors
+assert behavior contracts in prose. If the JSDoc says "errors go to
+console.warn" and the catch body is empty, that's a drift — generate
+a finding even though "go to" is not in the original core list.
 
 Spot-checks miss findings. Exhaustive sweep does not — if the function
 list is N, generate N reads. The audit budget is yours; use it. (Scope
