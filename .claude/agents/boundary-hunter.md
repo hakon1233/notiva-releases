@@ -64,6 +64,15 @@ strictly. SQL/shell-bound boundary issues are `high` severity.
 
 ### 5 — Emit findings
 
+**Cap the `findings` array at ≤ 4 entries per dispatch.** Prefer high-severity
+high-confidence boundary risks (SQL/shell-bound passthrough, no validation
+before downstream call). If more than 4 candidates exist, list only the top
+4 in the JSON and put any remaining brief one-line summaries in an
+`overflow_notes` array (strings, not objects). Workers downstream have a
+finite action budget — an exhaustive list of 10+ findings is worse than a
+curated top-4 because the worker processes top-to-bottom and exhausts budget
+on early noise before reaching the real boundary risk.
+
 Use the schema below. No prose outside the JSON. Confidence:
 
 - `high` — the field is read and passed to a side-effectful call with no

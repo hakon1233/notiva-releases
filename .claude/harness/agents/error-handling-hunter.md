@@ -60,6 +60,16 @@ If the `.catch` body has no logging at all, that's a `high` finding.
 
 ### 5 — Emit findings
 
+**Cap the `findings` array at ≤ 4 entries per dispatch.** Prefer high-severity
+high-confidence error-handling defects (empty catch, silent swallow,
+type-mismatched fallback that hides the failure). If more than 4 candidates
+exist, list only the top 4 in the JSON and put any remaining brief one-line
+summaries in an `overflow_notes` array (strings, not objects). Workers
+downstream have a finite action budget — an exhaustive list of 12+
+findings is worse than a curated top-4 because the worker processes
+top-to-bottom and exhausts budget on early noise before reaching the real
+error-swallow.
+
 Use the schema below. No prose outside the JSON. Confidence:
 
 - `high` — body of the catch is empty or returns silently, and the
