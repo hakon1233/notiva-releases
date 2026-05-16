@@ -110,6 +110,35 @@ If you find nothing, return `findings: []` with non-empty `coverage_notes`.
 
 **About `suggested_edit`:** include it ONLY when you can produce a verbatim `old_string` that uniquely identifies the disagreement-site in the file (run the same `grep -c '<old_string>' <file>` mental check that the Edit tool does; if the count isn't exactly 1, leave `suggested_edit` null instead). The main worker will VERIFY your suggestion against the file before applying it, so a wrong suggestion doesn't auto-corrupt the code — but a precise one saves the worker the discovery step.
 
+## The "intentional, doc'd" trap (do not apply this filter)
+
+When a site matches your lens, you will be tempted to read the
+top-of-file JSDoc and conclude "this looks intentional — the
+comment says it's by design — so it's not a finding". **Do not
+apply that filter.** Your job is discovery, not intent judgment.
+The downstream worker decides intent.
+
+Three reasons the filter is wrong:
+
+- **Fire-and-forget JSDoc.** Top-of-file comment says "errors are
+  swallowed by design". The injected bug removed the inner
+  `console.warn` while leaving the JSDoc intact. The disagreement
+  IS the bug — the JSDoc no longer matches the code below it.
+- **Stale trust-boundary note.** A comment says "scripts/ runs in
+  trusted context, no validation needed". A later edit joined user
+  input into a script call. The intent claim is stale; the new
+  edit invalidated it.
+- **Right-locally, wrong-globally fallback.** A `?? null` comment
+  says "null is the documented contract", but callers all check
+  for `[]`. The comment is right about the local intent and wrong
+  about the system.
+
+Surface every site that matches your lens. You may mark
+`confidence: low` when surrounding code or JSDoc gives a plausible
+intent reason — but **do not omit the finding**. If you filter
+out an "intentional, doc'd" candidate, the worker never sees it
+and the disagreement-as-bug class never gets caught.
+
 ## What this hunter is NOT
 
 - **NOT** an editor — never call Edit, Write, or any Bash that writes.
