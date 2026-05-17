@@ -24,7 +24,7 @@ grep -rnE 'except[[:space:]]|except:|recover\(\)|err[[:space:]]*!=[[:space:]]*ni
   src/ server/ 2>/dev/null
 ```
 
-### 2 — Five anti-patterns to flag
+### 2 — Six anti-patterns to flag
 
 **(a) Empty / no-op catch**. `.catch(() => {})`, `catch (e) {}`,
 `except: pass` — error vanishes silently.
@@ -41,6 +41,31 @@ documents a non-empty list).
 
 **(e) Try-wrap with no catch / catch-only-Error**. `try { … } catch (e)
 { if (e instanceof X) … }` where the non-X case falls through silently.
+
+**(f) TOCTOU / check-then-use** (r23 addition). The classic
+time-of-check-to-time-of-use race: `if (fs.existsSync(p)) { /* ... */
+fs.readFileSync(p); }` — between the check and the use, another
+process or test setup can delete or replace the file. Shapes to flag:
+
+- `if (fs.existsSync(...)) { ... fs.read*(...) }` and variants —
+  the check guards the read, but the read can still fail when the
+  file vanishes mid-call. Wrap the read in `try/catch` directly,
+  skip the existsSync.
+- `if (await access(p)) { ... readFile(p) }` — same shape async.
+- Custom existence-then-use sequences over network resources (the
+  resource can disappear between handshake and request).
+- Test-injection / mock-injection code that checks for a sentinel
+  file before applying a transformation — sentinel races between
+  injection and read.
+
+Why this is a separate anti-pattern from (e): TOCTOU is not "the
+catch was wrong"; it's "the structure of check-then-use is wrong."
+The fix is usually to remove the existence check and just `try` the
+read, OR to hold a lock across the window. r23 added this pattern
+to target BH-010 (`src/lib/openclaw/test-injection.ts`) which the
+existing `try/catch` grep already routes into this hunter's
+candidate pool but whose lens vocabulary did not previously include
+TOCTOU as a flaggable shape.
 
 ### 3 — Context-aware filtering
 
