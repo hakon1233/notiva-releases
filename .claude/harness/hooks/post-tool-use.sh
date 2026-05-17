@@ -102,6 +102,7 @@ print(f"## {lens}")
 print()
 print(f"_coverage: {coverage}_")
 print()
+import hashlib as _hashlib
 for i, f in enumerate(findings, 1):
     file = f.get("file","?")
     ls = f.get("line_start", 0)
@@ -110,9 +111,21 @@ for i, f in enumerate(findings, 1):
     conf = f.get("confidence","?")
     hyp = f.get("hypothesis","?")
     ev = f.get("evidence","")
-    print(f"### {lens}-{i}  [{sev}, {conf}]  {file}:{ls}-{le}")
+    # r20 shipped: finding_id + intent_signal. finding_id is
+    # hunter-provided when present; we derive a stable fallback from
+    # file+line_start if missing, so workers always have an
+    # addressable identity per finding.
+    fid = f.get("finding_id")
+    if not fid:
+        h = _hashlib.sha1(f"{file}:{ls}".encode("utf-8")).hexdigest()[:8]
+        fid = f"{lens}-{h}"
+    intent = f.get("intent_signal", "")
+    print(f"### finding_id: {fid}  [{sev}, {conf}]  {file}:{ls}-{le}")
     print()
     print(f"**Hypothesis:** {hyp}")
+    if intent:
+        print()
+        print(f"**Intent signal (one input, not a veto):** {intent}")
     print()
     if ev:
         print("```")

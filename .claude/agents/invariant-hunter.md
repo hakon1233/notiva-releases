@@ -135,11 +135,13 @@ unfixed.
   "coverage_notes": "<one sentence: which dirs/files you scanned>",
   "findings": [
     {
+      "finding_id": "invariant-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 70,
       "evidence": "the JSDoc/comment text + the contradicting code, quoted",
       "hypothesis": "one sentence: the assertion vs the contradiction",
+      "intent_signal": "neutral one-sentence description of what the JSDoc/comment asserts the code should do, regardless of whether the code below actually does it",
       "severity": "high|medium|low",
       "confidence": "high|medium|low",
       "suggested_edit": {
@@ -154,6 +156,20 @@ unfixed.
 
 If nothing found, `findings: []` with `coverage_notes` listing what you
 checked.
+
+**About `finding_id` (r20-shipped):** format `invariant-<8-char-hash>`
+where the hash is a deterministic function of `file + line_start`.
+Stable identity so downstream consumers can address THIS specific
+finding instead of pattern-matching.
+
+**About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
+description of what the JSDoc / assertion claims, NOT your judgment.
+Example: `"The function is documented as 'always returns the
+leftmost matching element'."` — captures the assertion verbatim
+without restating the bug. This is ONE input the downstream worker
+uses to weight findings; it is NOT a veto on emission. Continue
+to surface findings even when intent looks plausible — the
+"intentional, doc'd" trap rule still binds.
 
 **About `suggested_edit`:** include it ONLY when the fix is to align the
 code with the assertion (the assertion is the spec, the code is wrong)

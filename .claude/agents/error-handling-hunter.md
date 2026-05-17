@@ -86,11 +86,13 @@ Use the schema below. No prose outside the JSON. Confidence:
   "coverage_notes": "<one sentence: which dirs/languages you scanned>",
   "findings": [
     {
+      "finding_id": "error-handling-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 55,
       "evidence": "the catch/error path, quoted",
       "hypothesis": "one sentence: what failure is swallowed and why it matters",
+      "intent_signal": "neutral one-sentence description of the surrounding-code intent context — what the file/function looks like it's TRYING to do, regardless of whether you think the code achieves it",
       "severity": "high|medium|low",
       "confidence": "high|medium|low"
     }
@@ -99,6 +101,48 @@ Use the schema below. No prose outside the JSON. Confidence:
 ```
 
 If nothing found, `findings: []` with `coverage_notes`.
+
+### `finding_id` (r20-shipped)
+
+A stable, addressable identifier so downstream consumers can address
+this specific finding rather than pattern-matching on file path or
+evidence text. Format: `error-handling-<8-char-hash>` where the hash
+is a deterministic function of `file + line_start` — same site
+across re-dispatches gets the same id.
+
+Why it exists: in r17 trial 3e2ff4b1, error-handling-hunter reported
+two `.catch(()=>{})` findings (one in `ingest.ts:73-86`, one in
+`research-run-watcher.ts:114`). The worker conflated them as "the
+catch-block fix", fixed the sibling, and missed BH-017. With
+`finding_id` rendered into `hunter-findings.md`, the worker can
+mark `# fixed: error-handling-abc12345` per-finding, eliminating
+the conflation.
+
+### `intent_signal` (r20-shipped, r13-P2 design)
+
+A NEUTRAL description of what the surrounding code intends, NOT
+your judgment about whether it succeeds. One sentence. Example
+good values:
+
+- "The function is documented as fire-and-forget event ingestion
+  that should swallow errors silently."
+- "The error path here handles an optional cache miss in a hot
+  path."
+- "The catch is followed by a typed default-return that callers
+  rely on for nullable handling."
+
+Examples of BAD values (judgments, not neutral signal):
+
+- "Intentional — the JSDoc says so." (your judgment, not the
+  intent context)
+- "Looks fine." (no signal at all)
+- "Bug." (you've already filed a finding; this isn't the place
+  to repeat the verdict)
+
+This is ONE input the downstream worker uses to weight the finding;
+it is NOT a veto on whether the finding gets emitted. Continue to
+surface findings even when intent looks plausible — the
+"intentional, doc'd" trap rule above still binds.
 
 ## The "intentional, doc'd" trap (do not apply this filter)
 

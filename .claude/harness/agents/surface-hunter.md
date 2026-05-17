@@ -101,11 +101,13 @@ Use the schema below. No prose outside the JSON. Confidence:
   "coverage_notes": "<one sentence: which routes you curl'd, which port>",
   "findings": [
     {
+      "finding_id": "surface-<8-char-hash>",
       "file": "<the source file most likely to own the broken element, OR 'live:<url>' if you can't pin source>",
       "line_start": 0,
       "line_end": 0,
       "evidence": "the curl'd HTML snippet showing the problem, or the HTTP status line",
       "hypothesis": "one sentence: what's visibly broken at the user-facing surface",
+      "intent_signal": "neutral one-sentence description of what the page/route looks like it's TRYING to render based on its source file context, regardless of whether the rendered output matches",
       "severity": "high|medium|low",
       "confidence": "high|medium|low",
       "suggested_edit": {
@@ -121,6 +123,18 @@ Use the schema below. No prose outside the JSON. Confidence:
 If the dev server isn't reachable, return `findings: [{ ..., hypothesis:
 "dev server not reachable at http://...:<port>", severity: "high"}]` so
 the main worker knows.
+
+**About `finding_id` (r20-shipped):** format `surface-<8-char-hash>`
+where the hash is a deterministic function of `file + line_start` (or
+`live:<url>` when source is unpinned). Stable identity so downstream
+consumers can address THIS specific finding.
+
+**About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
+description of what the source file or route looks like it's TRYING
+to render — e.g. `"The sidebar is intended to link to /terminals."`
+or `"The page imports './globals.css' at the top of layout.tsx."` —
+captures the intent context without restating the bug. ONE input
+the worker uses; NOT a veto on emission.
 
 **About `suggested_edit`:** include it ONLY when you pinned the bug to
 a specific source file (not `live:<url>`) AND can produce a unique

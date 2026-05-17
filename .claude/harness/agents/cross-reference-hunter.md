@@ -89,11 +89,13 @@ JSON. Confidence:
   "coverage_notes": "<one sentence: which configs/dirs you scanned>",
   "findings": [
     {
+      "finding_id": "cross-reference-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 49,
       "evidence": "3-line code/config quote",
       "hypothesis": "one sentence: what fact disagrees with what other fact, named",
+      "intent_signal": "neutral one-sentence description of which source the surrounding context treats as authoritative, regardless of whether the cited code agrees",
       "severity": "high|medium|low",
       "confidence": "high|medium|low",
       "suggested_edit": {
@@ -107,6 +109,18 @@ JSON. Confidence:
 ```
 
 If you find nothing, return `findings: []` with non-empty `coverage_notes`.
+
+**About `finding_id` (r20-shipped):** format `cross-reference-<8-char-hash>`
+where the hash is a deterministic function of `file + line_start`. Stable
+identity so downstream consumers can address THIS specific finding.
+
+**About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
+description of which source the surrounding code claims as
+authoritative — e.g. `"package.json declares PORT=5198 as the
+project's dev port."` or `"AGENTS.md documents PTY_BASE=43737 as
+the canonical handle."` Captures the authoritative-side intent
+without restating the bug. ONE input the downstream worker uses;
+NOT a veto on emission.
 
 **About `suggested_edit`:** include it ONLY when you can produce a verbatim `old_string` that uniquely identifies the disagreement-site in the file (run the same `grep -c '<old_string>' <file>` mental check that the Edit tool does; if the count isn't exactly 1, leave `suggested_edit` null instead). The main worker will VERIFY your suggestion against the file before applying it, so a wrong suggestion doesn't auto-corrupt the code — but a precise one saves the worker the discovery step.
 

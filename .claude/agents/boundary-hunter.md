@@ -89,11 +89,13 @@ Use the schema below. No prose outside the JSON. Confidence:
   "coverage_notes": "<one sentence: which routes/handlers you scanned>",
   "findings": [
     {
+      "finding_id": "boundary-<8-char-hash>",
       "file": "src/app/api/.../route.ts",
       "line_start": 18,
       "line_end": 35,
       "evidence": "the request-parse + use, quoted",
       "hypothesis": "one sentence: which untrusted field is used without which kind of check",
+      "intent_signal": "neutral one-sentence description of the surrounding-code intent context — what the route/handler looks like it's TRYING to validate, regardless of whether you think the code achieves it",
       "severity": "high|medium|low",
       "confidence": "high|medium|low"
     }
@@ -102,6 +104,30 @@ Use the schema below. No prose outside the JSON. Confidence:
 ```
 
 If nothing found, `findings: []` with `coverage_notes`.
+
+### `finding_id` (r20-shipped)
+
+Stable, addressable identifier — format `boundary-<8-char-hash>`
+where the hash is a deterministic function of `file + line_start`.
+Lets downstream consumers address THIS specific finding instead of
+pattern-matching on evidence text. See r13-P2 / r20 design.
+
+### `intent_signal` (r20-shipped, r13-P2 design)
+
+A NEUTRAL one-sentence description of what the surrounding code
+intends — what the route is documented to accept, what trust the
+handler claims to extend, etc. NOT your judgment about whether it
+succeeds. Examples:
+
+- "The route accepts an untyped POST body and trusts the caller to
+  send a known action enum."
+- "The handler is documented as internal-only behind an
+  authentication middleware."
+
+This is ONE input the downstream worker uses to weight the finding;
+it is NOT a veto. Continue to surface findings even when intent
+looks plausible — the "intentional, doc'd" trap rule above still
+binds.
 
 ## The "intentional, doc'd" trap (do not apply this filter)
 
