@@ -81,6 +81,39 @@ JSON. Confidence:
   pin the second source.
 - `low` — pattern smells off but you have one source only.
 
+## File-selection discipline (r21)
+
+Before culling the candidate pool to your finding cap, apply a
+per-file lens probe so strong matches win deep-read slots over
+incidental neighbours.
+
+1. For EVERY candidate file in your pool, read the top 30 lines
+   (header JSDoc, top-level constants, top-of-file block comments).
+2. For each file ask the selection question:
+   > **Does this file contain ANY of: a port literal, a URL
+   > string, an env-var default, a repeated enum-like literal, or
+   > a constant the rest of the repo cites elsewhere?**
+3. **Matches enter the priority bucket.** Non-matches go to a
+   secondary bucket — culled, not deleted.
+4. **Selection rule:** matched files strictly beat non-matched
+   WHEN matched-count ≥ finding cap. Below cap, you may include
+   non-matching candidates as secondary picks — annotate each
+   with a one-line `selection_rationale` in the finding (e.g.
+   "recently-modified, imported by route-handler, no top-of-file
+   doc but lexically suspicious").
+5. **If more matches exist than your finding cap allows,** emit
+   your cap on the matched files and add an `unranked_matches`
+   string array (absolute file paths) listing the matched files
+   you couldn't deep-read within budget. The downstream renderer
+   surfaces this as a coverage-gap section in
+   `hunter-findings.md` so the worker knows lens-strong sites
+   remain unexamined.
+
+The principle: **the lens defines who's a candidate, not who's a
+deep-read target.** r20 c-92a19020 trace showed strong candidates
+losing slots to incidental files ~40% of the time; this discipline
+prevents that.
+
 ## Output schema (exactly this)
 
 ```json

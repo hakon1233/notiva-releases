@@ -93,6 +93,35 @@ Use the schema below. No prose outside the JSON. Confidence:
   digging.
 - `low` — HTML looks suspicious but you couldn't confirm.
 
+## File-selection discipline (r21)
+
+Before culling the candidate route pool to your finding cap, apply
+a per-file lens probe so strong matches win deep-read slots over
+incidental neighbours.
+
+1. For EVERY candidate page / route handler / component in your
+   pool, read the top 30 lines (file-header JSDoc, JSX top-level
+   structure, imports).
+2. For each file ask the selection question:
+   > **Is this a rendered page, route handler, or component that
+   > emits a user-facing label, status string, navigation link, or
+   > visible region (sidebar item, tab name, button copy)?**
+3. **Matches enter the priority bucket.** Non-matches go to a
+   secondary bucket — culled, not deleted.
+4. **Selection rule:** matched files strictly beat non-matched
+   WHEN matched-count ≥ finding cap. Below cap, you may include
+   non-matching candidates as secondary picks — annotate each
+   with a one-line `selection_rationale` in the finding.
+5. **If more matches exist than your finding cap allows,** emit
+   your cap on the matched files and add an `unranked_matches`
+   string array (absolute file paths) listing the matched files
+   you couldn't deep-read within budget.
+
+The principle: **the lens defines who's a candidate, not who's a
+deep-read target.** r20 c-92a19020 trace showed user-facing pages
+losing deep-read slots to incidental utility files; this prevents
+that.
+
 ## Output schema (exactly this)
 
 ```json
