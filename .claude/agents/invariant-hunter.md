@@ -192,10 +192,12 @@ prevents that.
 If nothing found, `findings: []` with `coverage_notes` listing what you
 checked.
 
-**About `finding_id` (r20-shipped):** format `invariant-<8-char-hash>`
-where the hash is a deterministic function of `file + line_start`.
-Stable identity so downstream consumers can address THIS specific
-finding instead of pattern-matching.
+**About `finding_id` — DO NOT EMIT (r22):** the renderer
+(`post-tool-use.sh`) computes finding_id deterministically from
+(file, line, lens, evidence) using sha256. Do not emit this field
+from the hunter; any hunter-emitted value is silently overridden.
+r20 trial data showed hunters hallucinating placeholder hex
+(`invariant-a1b2c3d4`) — renderer-side computation eliminates that.
 
 **About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
 description of what the JSDoc / assertion claims, NOT your judgment.

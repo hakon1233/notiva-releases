@@ -122,7 +122,6 @@ prevents that.
   "coverage_notes": "<one sentence: which configs/dirs you scanned>",
   "findings": [
     {
-      "finding_id": "cross-reference-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 49,
@@ -143,9 +142,13 @@ prevents that.
 
 If you find nothing, return `findings: []` with non-empty `coverage_notes`.
 
-**About `finding_id` (r20-shipped):** format `cross-reference-<8-char-hash>`
-where the hash is a deterministic function of `file + line_start`. Stable
-identity so downstream consumers can address THIS specific finding.
+**About `finding_id` — DO NOT EMIT (r22):** the renderer
+(`post-tool-use.sh`) computes finding_id deterministically from
+(file, line, lens, evidence) using sha256. Do not emit this field
+from the hunter; any hunter-emitted value is silently overridden.
+r20 trial data showed hunters hallucinating placeholder hex like
+`cross-reference-a1b2c3d4` — renderer-side computation eliminates
+that defect.
 
 **About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
 description of which source the surrounding code claims as

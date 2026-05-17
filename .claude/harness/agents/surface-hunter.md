@@ -130,7 +130,6 @@ that.
   "coverage_notes": "<one sentence: which routes you curl'd, which port>",
   "findings": [
     {
-      "finding_id": "surface-<8-char-hash>",
       "file": "<the source file most likely to own the broken element, OR 'live:<url>' if you can't pin source>",
       "line_start": 0,
       "line_end": 0,
@@ -153,10 +152,10 @@ If the dev server isn't reachable, return `findings: [{ ..., hypothesis:
 "dev server not reachable at http://...:<port>", severity: "high"}]` so
 the main worker knows.
 
-**About `finding_id` (r20-shipped):** format `surface-<8-char-hash>`
-where the hash is a deterministic function of `file + line_start` (or
-`live:<url>` when source is unpinned). Stable identity so downstream
-consumers can address THIS specific finding.
+**About `finding_id` — DO NOT EMIT (r22):** the renderer
+(`post-tool-use.sh`) computes finding_id deterministically from
+(file, line, lens, evidence) using sha256. Do not emit this field
+from the hunter; any hunter-emitted value is silently overridden.
 
 **About `intent_signal` (r20-shipped, r13-P2 design):** a NEUTRAL
 description of what the source file or route looks like it's TRYING
