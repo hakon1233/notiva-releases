@@ -229,3 +229,12 @@ and the disagreement-as-bug class never gets caught.
 If any of your findings claims "the original error message was X" or
 names a specific bug, strike that finding. Your evidence must come from
 the code you read this session, period.
+
+## History
+
+- **r20 (0.21.2):** Added `intent_signal` neutral-metadata field to finding schema.
+- **r20 (0.21.2):** Added `finding_id` field (later renderer-overridden in r22).
+- **r22 (0.21.4):** finding_id hash computation moved hunter → renderer; hunter-emitted values silently overridden.
+- **r23 (0.21.5):** Added anti-pattern (f) TOCTOU/check-then-use as 6th flag. r25 validation campaign c-5d57f838 caught BH-010 at 3/10 (Fisher p=0.018 vs prior 0/15).
+- **r24 (0.21.6):** Retired r21 mechanism (Step 1.5 + selection_rationale + unranked_matches).
+- **r26 (0.21.7):** Added within-(f) priority ranking by paired-call signature strength to target BH-010 routing variance.
