@@ -117,7 +117,6 @@ when it didn't — file-selection variance was the dominant signal.
   "coverage_notes": "<one sentence: which routes/handlers you scanned>",
   "findings": [
     {
-      "finding_id": "boundary-<8-char-hash>",
       "file": "src/app/api/.../route.ts",
       "line_start": 18,
       "line_end": 35,
@@ -133,12 +132,14 @@ when it didn't — file-selection variance was the dominant signal.
 
 If nothing found, `findings: []` with `coverage_notes`.
 
-### `finding_id` (r20-shipped)
+### `finding_id` — **DO NOT EMIT** (r22)
 
-Stable, addressable identifier — format `boundary-<8-char-hash>`
-where the hash is a deterministic function of `file + line_start`.
-Lets downstream consumers address THIS specific finding instead of
-pattern-matching on evidence text. See r13-P2 / r20 design.
+The renderer (`post-tool-use.sh`) computes finding_id deterministically
+from (file, line, lens, evidence) using sha256. **Do not emit a
+`finding_id` field from this hunter.** Any hunter-emitted value is
+silently overridden. r20 trial data showed many hunters hallucinated
+placeholder hex like `boundary-a1b2c3d4` rather than real hashes;
+moving the computation to the renderer eliminates the defect.
 
 ### `intent_signal` (r20-shipped, r13-P2 design)
 

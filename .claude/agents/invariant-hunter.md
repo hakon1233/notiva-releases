@@ -171,7 +171,6 @@ prevents that.
   "coverage_notes": "<one sentence: which dirs/files you scanned>",
   "findings": [
     {
-      "finding_id": "invariant-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 70,

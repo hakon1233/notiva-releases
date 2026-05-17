@@ -117,7 +117,6 @@ losing slots to incidental files; this discipline prevents that.
   "coverage_notes": "<one sentence: which dirs/languages you scanned>",
   "findings": [
     {
-      "finding_id": "error-handling-<8-char-hash>",
       "file": "src/...",
       "line_start": 47,
       "line_end": 55,
@@ -133,21 +132,20 @@ losing slots to incidental files; this discipline prevents that.
 
 If nothing found, `findings: []` with `coverage_notes`.
 
-### `finding_id` (r20-shipped)
+### `finding_id` — **DO NOT EMIT** (r22)
 
-A stable, addressable identifier so downstream consumers can address
-this specific finding rather than pattern-matching on file path or
-evidence text. Format: `error-handling-<8-char-hash>` where the hash
-is a deterministic function of `file + line_start` — same site
-across re-dispatches gets the same id.
+The renderer (`post-tool-use.sh`) computes finding_id deterministically
+from (file, line, lens, evidence) using sha256. **Do not emit a
+`finding_id` field from this hunter.** Any hunter-emitted value is
+silently overridden, and r20 trial data showed ~40% of hunter
+emissions were hallucinated placeholder hex like
+`error-handling-a1b2c3d4` rather than real hashes. The renderer-side
+computation eliminates that defect by removing the inline-hash
+requirement from the hunter's job.
 
-Why it exists: in r17 trial 3e2ff4b1, error-handling-hunter reported
-two `.catch(()=>{})` findings (one in `ingest.ts:73-86`, one in
-`research-run-watcher.ts:114`). The worker conflated them as "the
-catch-block fix", fixed the sibling, and missed BH-017. With
-`finding_id` rendered into `hunter-findings.md`, the worker can
-mark `# fixed: error-handling-abc12345` per-finding, eliminating
-the conflation.
+The format you'll see in `hunter-findings.md` remains
+`error-handling-<8-char-hash>` — but the hash is now computed
+downstream, not by you.
 
 ### `intent_signal` (r20-shipped, r13-P2 design)
 

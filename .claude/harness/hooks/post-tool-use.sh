@@ -102,7 +102,7 @@ print(f"## {lens}")
 print()
 print(f"_coverage: {coverage}_")
 print()
-import hashlib as _hashlib
+import hashlib as _hashlib  # noqa: E402 — used by per-finding finding_id derivation below
 for i, f in enumerate(findings, 1):
     file = f.get("file","?")
     ls = f.get("line_start", 0)
@@ -111,14 +111,18 @@ for i, f in enumerate(findings, 1):
     conf = f.get("confidence","?")
     hyp = f.get("hypothesis","?")
     ev = f.get("evidence","")
-    # r20 shipped: finding_id + intent_signal. finding_id is
-    # hunter-provided when present; we derive a stable fallback from
-    # file+line_start if missing, so workers always have an
-    # addressable identity per finding.
-    fid = f.get("finding_id")
-    if not fid:
-        h = _hashlib.sha1(f"{file}:{ls}".encode("utf-8")).hexdigest()[:8]
-        fid = f"{lens}-{h}"
+    # r22: finding_id is renderer-computed; hunter-emitted values
+    # are silently ignored. Hunters emit (file, line, lens, evidence)
+    # and the renderer derives a deterministic identity from sha256
+    # over those inputs. This eliminates the r20 placeholder-leakage
+    # defect — hunters can't emit "a1b2c3d4"-style hallucinated hex
+    # into the canonical surface if the canonical surface is
+    # renderer-controlled. Aligns with the r20 spec format
+    # <lens>-<8hex-sha256(file:line:lens:evidence[:64])>.
+    ev_short = (f.get("evidence", "") or "")[:64]
+    input_str = f"{file}:{ls}:{lens}:{ev_short}"
+    h = _hashlib.sha256(input_str.encode("utf-8")).hexdigest()[:8]
+    fid = f"{lens}-{h}"
     intent = f.get("intent_signal", "")
     selection_rationale = f.get("selection_rationale", "")
     print(f"### finding_id: {fid}  [{sev}, {conf}]  {file}:{ls}-{le}")
