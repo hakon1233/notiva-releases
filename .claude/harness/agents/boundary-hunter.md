@@ -81,34 +81,6 @@ Use the schema below. No prose outside the JSON. Confidence:
   value (e.g. type check but no enum check).
 - `low` — the field is read but you didn't fully trace its use.
 
-## File-selection discipline (r21)
-
-Before culling the candidate pool to your finding cap, apply a
-per-file lens probe so strong matches win deep-read slots over
-incidental neighbours.
-
-1. For EVERY candidate file in your pool, read the top 30 lines
-   (header JSDoc, exports, top imports).
-2. For each file ask the selection question:
-   > **Is this file a route handler / API endpoint / middleware,
-   > AND does it parse or accept an external input field
-   > (request body, query param, header, form data)?**
-3. **Matches enter the priority bucket.** Non-matches go to a
-   secondary bucket — culled, not deleted.
-4. **Selection rule:** matched files strictly beat non-matched
-   WHEN matched-count ≥ finding cap. Below cap, you may include
-   non-matching candidates as secondary picks — annotate each
-   with a one-line `selection_rationale` in the finding.
-5. **If more matches exist than your finding cap allows,** emit
-   your cap on the matched files and add an `unranked_matches`
-   string array (absolute file paths) listing the matched files
-   you couldn't deep-read within budget.
-
-The principle: **the lens defines who's a candidate, not who's a
-deep-read target.** r20 c-92a19020 trace showed boundary-hunter
-catching BH-016 in 3/5 trials when it visited `route.ts` and 0/3
-when it didn't — file-selection variance was the dominant signal.
-
 ## Output schema (exactly this)
 
 ```json

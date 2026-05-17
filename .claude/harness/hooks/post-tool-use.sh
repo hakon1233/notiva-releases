@@ -124,19 +124,12 @@ for i, f in enumerate(findings, 1):
     h = _hashlib.sha256(input_str.encode("utf-8")).hexdigest()[:8]
     fid = f"{lens}-{h}"
     intent = f.get("intent_signal", "")
-    selection_rationale = f.get("selection_rationale", "")
     print(f"### finding_id: {fid}  [{sev}, {conf}]  {file}:{ls}-{le}")
     print()
     print(f"**Hypothesis:** {hyp}")
     if intent:
         print()
         print(f"**Intent signal (one input, not a veto):** {intent}")
-    if selection_rationale:
-        # r21: hunters annotate non-matching secondary picks with
-        # a one-line rationale when they include them below cap.
-        # Empty/absent on lens-matched findings.
-        print()
-        print(f"**Selection rationale (secondary pick — below cap):** {selection_rationale}")
     print()
     if ev:
         print("```")
@@ -156,17 +149,6 @@ for i, f in enumerate(findings, 1):
         print()
         print("# justification: " + se.get("justification", ""))
         print("```")
-    print()
-# r21: surface coverage-gap files the hunter MATCHED but couldn't
-# deep-read within the finding-cap budget. Pure coverage signal —
-# not findings, not edits. Empty/absent → omit the section.
-unranked = j.get("unranked_matches", []) or []
-if isinstance(unranked, list) and any(isinstance(u, str) and u.strip() for u in unranked):
-    print(f"### Unranked matches ({lens}) — matched the lens, couldn't deep-read within cap")
-    print()
-    for u in unranked:
-        if isinstance(u, str) and u.strip():
-            print(f"- {u.strip()}")
     print()
 PY
 )

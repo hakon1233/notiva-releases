@@ -127,42 +127,6 @@ because the worker processes top-to-bottom and stops after the first
 few it can finish, leaving real-defect findings from other hunters
 unfixed.
 
-## File-selection discipline (r21)
-
-Before culling the candidate pool to your finding cap, apply a
-per-file lens probe so strong matches win deep-read slots over
-incidental neighbours.
-
-1. For EVERY candidate file in your pool, read the top 30 lines
-   (header JSDoc, file-header block comments, top-level docstrings).
-2. For each file ask the selection question:
-   > **Does the top-of-file JSDoc / file-header comment contain ANY
-   > of the existing extended-vocabulary phrases this agent body
-   > already lists (goes to / logs / emits / throws / calls /
-   > non-blocking / first / last / exactly N / must / always /
-   > never / sorted / leftmost / default / expected / guaranteed
-   > / in order)?**
-   > No NEW vocabulary added here — this is the existing lens
-   > restated at selection time.
-3. **Matches enter the priority bucket.** Non-matches go to a
-   secondary bucket — culled, not deleted.
-4. **Selection rule:** matched files strictly beat non-matched
-   WHEN matched-count ≥ finding cap. Below cap, you may include
-   non-matching candidates as secondary picks — annotate each
-   with a one-line `selection_rationale` in the finding (e.g.
-   "recently-modified, exported as primary entry point, no
-   top-of-file doc but lexically suspicious").
-5. **If more matches exist than your finding cap allows,** emit
-   your cap on the matched files and add an `unranked_matches`
-   string array (absolute file paths) listing the matched files
-   you couldn't deep-read within budget.
-
-The principle: **the lens defines who's a candidate, not who's a
-deep-read target.** r20 c-92a19020 trace showed strong candidates
-losing slots to incidental files ~40% of the time (BH-014's
-`outbound-gate.ts` was the canonical instance); this discipline
-prevents that.
-
 ## Output schema (exactly this)
 
 ```json
