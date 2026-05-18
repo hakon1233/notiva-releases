@@ -123,6 +123,33 @@ if [[ -f "runtime/.harness-state/hunter-findings.md" ]] \
   violations+=("Read('runtime/.harness-state/hunter-findings.md') — hunter findings were consolidated for this session but never Read. The hunters did the enumeration; reading their output is how you act on it.")
 fi
 
+# r28 G2: edit-required-on-cite gate for HIGH-signature (f) findings.
+# post-tool-use.sh writes one path per line to edit-required-paths.txt
+# when error-handling-hunter emits a (severity=high, confidence=high,
+# signature_strength=3) TOCTOU finding. Worker must Edit each path
+# before session-end. Stale-path fall-open: paths that no longer exist
+# on disk are skipped.
+edit_required_file="runtime/.harness-state/$SESSION_ID/edit-required-paths.txt"
+if [[ -f "$edit_required_file" ]]; then
+  unfulfilled=()
+  while IFS= read -r req_path; do
+    [[ -z "$req_path" ]] && continue
+    [[ ! -f "$req_path" ]] && continue  # stale-path fall-open
+    req_hash=$(printf '%s' "$req_path" | shasum | awk '{print $1}')
+    if ! state_has "$SESSION_ID" "edit-attempted-$req_hash"; then
+      unfulfilled+=("$req_path")
+    fi
+  done < "$edit_required_file"
+  if (( ${#unfulfilled[@]} > 0 )); then
+    msg="Edit/MultiEdit on the cited HIGH-signature (f) TOCTOU path(s) you Read but did NOT Edit:"$'\n'
+    for p in "${unfulfilled[@]}"; do
+      msg+="    - ${p}"$'\n'
+    done
+    msg+="    Workers historically catch TOCTOU bugs ONLY when they Edit the cited file. If a finding is genuinely wrong, run Bash 'echo skip: <reason>' touching one of these paths to acknowledge."
+    violations+=("$msg")
+  fi
+fi
+
 # If violations remain on FIRST fire, block-once and emit the bullet list.
 # After the worker pivots and (hopefully) invokes the listed skills, the
 # next stop attempt re-evaluates violations from scratch.

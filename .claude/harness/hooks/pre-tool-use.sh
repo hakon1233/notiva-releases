@@ -195,13 +195,20 @@ fi
 # session involved code changes (engineering-standards trigger), edits to
 # docs/ (docs-writing trigger), or a test run (verification substitute).
 case "$TOOL_NAME" in
-  Edit|Write)
+  Edit|Write|MultiEdit)
     state_set "$SESSION_ID" had-edit-or-write
     FILE_PATH=$(echo "$PAYLOAD" | jq -r '.tool_input.file_path // .tool_input.path // empty')
     case "$FILE_PATH" in
       */docs/*|docs/*) state_set "$SESSION_ID" had-docs-edit ;;
       *) state_set "$SESSION_ID" had-source-edit ;;
     esac
+    # r28: record every Edit/Write/MultiEdit file path so stop.sh can verify
+    # HIGH-signature (f) findings had an Edit attempt before session-end.
+    if [[ -n "$FILE_PATH" ]]; then
+      # Sentinel name uses sha1 to keep filename safe on any path.
+      path_hash=$(printf '%s' "$FILE_PATH" | shasum | awk '{print $1}')
+      state_set "$SESSION_ID" "edit-attempted-$path_hash"
+    fi
     ;;
   Bash)
     COMMAND=$(echo "$PAYLOAD" | jq -r '.tool_input.command // empty')

@@ -27,6 +27,7 @@ PAYLOAD=$(cat)
 
 TOOL_NAME=$(echo "$PAYLOAD" | jq -r '.tool_name // empty')
 [[ -z "$TOOL_NAME" ]] && exit 0
+SESSION_ID=$(echo "$PAYLOAD" | jq -r '.session_id // empty')
 
 # Only act on Agent/Task dispatches that match a hunter subagent_type.
 case "$TOOL_NAME" in
@@ -64,7 +65,7 @@ RESPONSE=$(echo "$PAYLOAD" | jq -r '
 # Try to locate the JSON block inside the response (hunters wrap in ```json fences).
 # Strategy: extract everything between the first '{' and the matching closing '}'.
 # We use python for reliable balanced-brace extraction since bash regex isn't.
-FINDINGS_MD=$(RESPONSE="$RESPONSE" python3 - <<'PY' 2>/dev/null
+FINDINGS_MD=$(RESPONSE="$RESPONSE" MH_SESSION_ID="$SESSION_ID" python3 - <<'PY' 2>/dev/null
 import json, re, sys, os
 text = os.environ.get("RESPONSE", "")
 # Find a JSON object that has "lens" and "findings" keys.
@@ -129,6 +130,33 @@ def _signature_strength(f):
     return 0
 
 findings.sort(key=lambda f: -_signature_strength(f))
+
+# r28 G2: emit edit-required-paths sentinel for HIGH-signature (f) findings
+# (signature_strength == 3 AND severity == "high" AND confidence == "high").
+# stop.sh enforces an Edit attempt on each path before session-end.
+# Stale-path fall-open is handled at gate-check time, not here.
+_sid = os.environ.get("MH_SESSION_ID", "")
+if _sid:
+    _hi_paths = []
+    for _f in findings:
+        if _signature_strength(_f) != 3:
+            continue
+        if (_f.get("severity", "") or "").lower() != "high":
+            continue
+        if (_f.get("confidence", "") or "").lower() != "high":
+            continue
+        _p = (_f.get("file", "") or "").strip()
+        if _p:
+            _hi_paths.append(_p)
+    if _hi_paths:
+        _sentinel_dir = os.path.join("runtime", ".harness-state", _sid)
+        try:
+            os.makedirs(_sentinel_dir, exist_ok=True)
+            with open(os.path.join(_sentinel_dir, "edit-required-paths.txt"), "a") as _fh:
+                for _p in _hi_paths:
+                    _fh.write(_p + "\n")
+        except Exception:
+            pass
 
 for i, f in enumerate(findings, 1):
     file = f.get("file","?")
