@@ -103,6 +103,33 @@ print()
 print(f"_coverage: {coverage}_")
 print()
 import hashlib as _hashlib  # noqa: E402 — used by per-finding finding_id derivation below
+
+# r27: within-lens stable sort by mechanism-strength signature.
+# Paired-call shapes (TOCTOU: existsSync(p) → readFileSync(p) on
+# identical path) are mechanically stronger than keyword-only TOCTOU
+# or generic catch-swallow. Promote them to the TOP so the worker
+# encounters them first. Same renderer-override family as r22's
+# finding_id move; hunters still pick WHICH findings to emit (cap-4),
+# the renderer just reorders within them.
+def _signature_strength(f):
+    hyp = f.get("hypothesis", "") or ""
+    ev = f.get("evidence", "") or ""
+    combined = (hyp + " " + ev).lower()
+    if "existssync" in combined and (
+        "readfilesync" in combined
+        or "readfile" in combined
+        or "unlinksync" in combined
+        or "statsync" in combined
+    ):
+        return 3
+    if "fs.access" in combined and "readfile" in combined:
+        return 2
+    if "toctou" in combined or "check-then-use" in combined or "check then use" in combined:
+        return 1
+    return 0
+
+findings.sort(key=lambda f: -_signature_strength(f))
+
 for i, f in enumerate(findings, 1):
     file = f.get("file","?")
     ls = f.get("line_start", 0)

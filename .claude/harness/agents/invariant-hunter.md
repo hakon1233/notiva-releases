@@ -223,3 +223,10 @@ If any of your findings names a bug ID, a victim repo, or a specific label
 you believe is "the correct one" without it being quoted from this repo's
 prose, strike that finding. Your evidence must be 100% from files you
 actually read this session.
+
+## History
+
+- **r14 (0.20.1):** Extended assertion vocabulary (go to / logs / fires / throws / calls / non-blocking / first / last / exactly N) added to Step 1.5 sweep.
+- **r20 (0.21.2):** Added `intent_signal` neutral-metadata field + `finding_id` field (later renderer-overridden in r22).
+- **r22 (0.21.4):** finding_id hash computation moved hunter → renderer; hunter-emitted values silently overridden.
+- **r24 (0.21.6):** Retired r21 mechanism (Step 1.5 file-selection discipline) along with all 5 hunters.
