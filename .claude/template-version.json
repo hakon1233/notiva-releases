@@ -1,8 +1,8 @@
 {
-  "template_commit": "325ae61",
-  "template_commit_date": "2026-05-18T05:43:25+02:00",
+  "template_commit": "1fd5781",
+  "template_commit_date": "2026-05-18T05:53:28+02:00",
   "bootstrap_version": "2026.04.24b",
-  "applied_at": "2026-05-18T03:51:52Z",
+  "applied_at": "2026-05-18T03:59:59Z",
   "source": "/Users/openhakon/projects/work/meta-harness-mvp",
   "layout": "layered-v2"
 }
