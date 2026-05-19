@@ -175,3 +175,9 @@ and the disagreement-as-bug class never gets caught.
 If any of your findings names a bug ID, a victim repo, or the literal
 error string that "should have been there," strike that finding. The
 hypothesis must be derivable from code you read.
+
+## History
+
+- **r20 (0.21.2):** Added `intent_signal` neutral-metadata field to finding schema (r13-P2 design).
+- **r20 (0.21.2):** Added `finding_id` field (later renderer-overridden in r22 after hunters emitted placeholder hex).
+- **r22 (0.21.4):** `finding_id` hash computation moved hunter → renderer; hunter-emitted values silently overridden. Hunter MUST NOT emit.

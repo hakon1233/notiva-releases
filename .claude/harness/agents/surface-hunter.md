@@ -188,3 +188,8 @@ If any of your hypotheses claims "the label SHOULD be X" without that X
 appearing in source code or docs you read this session, strike the
 finding. Hunch-based "this looks wrong" without textual support is not a
 finding.
+
+## History
+
+- **r20 (0.21.2):** Added `intent_signal` neutral-metadata field to finding schema (r13-P2 design).
+- **r22 (0.21.4):** `finding_id` hash computation moved hunter → renderer; hunter-emitted values silently overridden. Hunter MUST NOT emit.

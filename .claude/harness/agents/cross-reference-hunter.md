@@ -172,3 +172,9 @@ Before returning findings, re-read your hypothesis lines. If any sentence
 names a specific bug ID, a specific victim repo, or a port number you
 believe is "the correct one" without having read it in this repo's configs,
 you are encoding test knowledge. Strike that finding.
+
+## History
+
+- **r20 (0.21.2):** Added `intent_signal` neutral-metadata field to finding schema (r13-P2 design).
+- **r20 (0.21.2):** Added `finding_id` field (later renderer-overridden in r22 after hunters emitted placeholder hex).
+- **r22 (0.21.4):** `finding_id` hash computation moved hunter → renderer; hunter-emitted values silently overridden. Hunter MUST NOT emit.
