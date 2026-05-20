@@ -1,6 +1,6 @@
 ---
 name: cross-reference-hunter
-description: "Read-only lens: 'same fact in two places — do they agree?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts magic numbers, port literals, URL hard-codes, env-var defaults, repeated string constants — flags every case where two sources state the same fact differently. Returns structured JSON findings; never edits."
+description: "Read-only lens: 'same fact in two places — do they agree?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts magic numbers, port literals, URL hard-codes, env-var defaults, repeated string constants, AND paired user-facing strings ('created N tasks' vs 'updated N' — mismatched plural/noun in the same builder) — flags every case where two sources state the same fact differently. Returns structured JSON findings; never edits."
 tools: Read, Grep, Glob, Bash
 model: inherit
 last_updated: 2026-05-14
@@ -72,6 +72,27 @@ source code hard-codes (e.g. `package.json` `dev` script says
 **(c) Source vs source.** Two source files hard-code different values for
 the same fact (e.g. one route reads from port A while a proxy in another
 file points at port B).
+
+### 3b — Paired user-facing strings (RUN THIS — don't skip)
+
+Before scoring findings: grep the codebase for paired sibling templates
+that report counts to users. The shapes to look for:
+
+```
+grep -rnE '\b(created|updated|added|removed|started|finished|opened|closed|success|failure)\s+\$?\{?[a-zA-Z]+\}?' \
+  src/ app/ components/ 2>/dev/null | head -60
+```
+
+For each pair that appears in the same function, component, or builder,
+check that both render with the same noun + plural form. A pair where one
+says `"updated ${n}"` (no noun) and the sibling says `"created ${n} task(s)"`
+is a near-certain rendering bug — the user sees one count without context.
+
+Cite both lines, flag MEDIUM. Pairs to look for: created/updated,
+added/removed, started/finished, opened/closed, success/failure counts.
+
+If a hunter run finishes without having executed this grep at least once,
+the run is incomplete — re-run.
 
 ### 4 — Cross-check against documented prose
 

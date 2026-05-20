@@ -1,6 +1,6 @@
 ---
 name: invariant-hunter
-description: "Read-only lens: 'what does the code CLAIM to do — does it?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts file-level JSDoc, top-of-file documentation, README/ADR claims, and inline 'always/must/never/sorted/leftmost' assertions, then verifies the code below honors them. Returns structured JSON findings; never edits."
+description: "Read-only lens: 'what does the code CLAIM to do — does it?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts file-level JSDoc, top-of-file documentation, README/ADR claims, inline 'always/must/never/sorted/leftmost' assertions, AND state-machine dead clauses (guard predicates that look correct but allow same-state→same-state transitions to bypass the check), then verifies the code below honors them. Returns structured JSON findings; never edits."
 tools: Read, Grep, Glob, Bash
 model: inherit
 last_updated: 2026-05-14
@@ -74,6 +74,42 @@ If yes: invariant holds, move on. If no: that's a finding.
 If a file has a JSDoc claiming "the leftmost tab is X" and the JSX text
 node below says "Y" — that's a drift. Same for "default route", "first
 item", etc.
+
+### 3b — State-machine dead-clause detection (RUN THIS — don't skip)
+
+For any reducer, handler, or guarded transition (`if (newX !== current
+&& !precondition) return`-shaped predicates), enumerate the predicates and
+check whether **same-value transitions** can bypass them via falsy
+short-circuit.
+
+The shape to look for:
+
+```javascript
+// Looks guarded — but normal → normal short-circuits.
+if (newMode !== state.mode && !allChecked(state)) return state;
+```
+
+When `newMode === state.mode`, the first conjunct is false, the whole
+`&&` is false, the early return doesn't fire, the gate is bypassed. The
+user can toggle mode away and back to effectively skip an "all-checked"
+requirement.
+
+Greps to seed the candidate set:
+
+```
+grep -rnE 'if[[:space:]]*\([^)]*!==[[:space:]]*[a-zA-Z_.]+\.(mode|status|state|step)[^)]*&&' \
+  src/ app/ lib/ 2>/dev/null | head -40
+grep -rnE 'case[[:space:]]+[A-Z_]+:.*\n.*if[[:space:]]*\(' \
+  src/lib/store/ src/lib/state/ 2>/dev/null | head -20
+```
+
+For each candidate, mentally evaluate the predicate with `newX === current.X`.
+If the gate is bypassed, that's a dead clause — flag MEDIUM, cite the line.
+
+This catches the BH-009 family: state-machine gates that the JSDoc
+or surrounding code says "must require all-checked before transitioning"
+but the predicate's && composition lets same-state transitions skip
+the check.
 
 ### 4 — In-tree spec doc invariants (exhaustive — not just ADRs)
 

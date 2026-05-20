@@ -1,6 +1,6 @@
 ---
 name: error-handling-hunter
-description: "Read-only lens: 'what happens when something fails?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts catch blocks, fallback returns, `?? default` expressions, `.catch(() => …)` chains — flags handlers that silently drop errors, return wrong-type fallbacks, or hide failure from upstream callers. Returns structured JSON findings; never edits."
+description: "Read-only lens: 'what happens when something fails?'. Dispatch in parallel with the other hunter agents during an open-ended audit. Hunts catch blocks, fallback returns, `?? default` expressions, `.catch(() => …)` chains, AND check-then-act file pairs (existsSync→readFileSync, statSync→writeFileSync, lstatSync→readFileSync) where the file can vanish between the two calls — flags handlers that silently drop errors, return wrong-type fallbacks, hide failure from upstream callers, or assume filesystem state holds across two syscalls. Returns structured JSON findings; never edits."
 tools: Read, Grep, Glob, Bash
 model: inherit
 last_updated: 2026-05-14
@@ -189,6 +189,12 @@ Three reasons the filter is wrong:
   says "null is the documented contract", but callers all check
   for `[]`. The comment is right about the local intent and wrong
   about the system.
+- **"Race window is microseconds" claim.** A TOCTOU pair with a
+  JSDoc saying "the race window is microseconds, this is safe" is
+  unfalsifiable without a reproducer — the window is microseconds
+  *on this machine* with *this load*. ALWAYS emit the finding; the
+  worker decides whether to fix. Race-window arguments are never a
+  reason to skip emission.
 
 Surface every site that matches your lens. You may mark
 `confidence: low` when surrounding code or JSDoc gives a plausible
