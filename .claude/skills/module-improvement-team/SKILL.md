@@ -110,11 +110,40 @@ Dispatch the chosen ones in parallel (same-message multiple tool calls).
 ### Step 4 — Lead drafts the proposal
 
 Synthesize the perspectives. The proposal goes to
-`runtime/night-shift/round-<N>/<module>/proposal.md` with the
-structure:
+`runtime/night-shift/round-<N>/<MODULE_DISK_DIR>/proposal.md` where
+`<MODULE_DISK_DIR>` is the module's on-disk folder name. The
+canonical mapping (must be honored verbatim — the admin Round Report
+page parses these paths, the readers can't fall back to a "close
+enough" name):
+
+| Module (UI label) | On-disk dir under `round-N/` |
+|---|---|
+| Bug Hunt | `bug-hunt` |
+| Repo Maintenance | `repo-maintenance` |
+| Custom | `custom-benchmarks` |
+| Scenarios | `scenario-benchmarks` |
+| Worker | `worker-benchmarks` |
+| Router | `router-benchmarks` |
+| Multi-file Refactor | `multifile-refactor` |
+| Context-fill | `context-fill` |
+
+When adding a new module: pick the disk dir name once, register it
+in `apps/admin/src/lib/round-report.ts` (the `ROUND_REPORT_MODULES`
+array), and use that name forever.
+
+The proposal must use this exact structure — the **header block
+between the H1 and the first `##` is load-bearing**: the admin Round
+Report page parses `**Harness:**` to group proposals by shipped
+harness version, and hides rounds that didn't bump the harness.
 
 ```markdown
 # Round-N proposal — <module>
+
+**Date:** YYYY-MM-DD
+**Harness:** bump 0.21.X → 0.21.Y     ← MANDATORY. One of:
+                                        • `bump A.B.C → A.B.D` (a real ship)
+                                        • `no bump` (steady-state / no harness change)
+**Protocol:** <one-line link to the protocol doc you operated under, if any>
 
 ## TL;DR — headline + 2-3 bullets
 
@@ -122,7 +151,7 @@ structure:
 ... (from team-logs-analyst + your own reading)
 
 ## What I propose to change
-... (the actual diff)
+... (the actual diff, file-by-file)
 
 ## Why this should help
 ... (mechanism)
@@ -137,6 +166,29 @@ disagree — explicitly acknowledge what they flagged)
 ## Experimental plan (if applicable)
 ... (team-hypothesis-tester's diagnostic)
 ```
+
+**Format invariants — these break the Round Report page if violated:**
+
+- The `**Harness:**` line MUST be on its own line, MUST start at the
+  first column, MUST use the exact `**Harness:**` prefix (case
+  sensitive, two asterisks each side, colon, single space).
+- The arrow MUST be `→` (U+2192) OR `->` (ASCII). Either works.
+- Version numbers MUST be `MAJOR.MINOR.PATCH` (three integers).
+- For a `no bump` round, write `**Harness:** no bump` — DO NOT omit
+  the line. The page treats an absent header the same as a
+  malformed one and hides the round entirely.
+- The on-disk path MUST be the exact dir name from the table above.
+  Writing to `runtime/night-shift/round-32/scenarios/proposal.md`
+  (the UI label) when the table says `scenario-benchmarks` means
+  the page will never see the proposal.
+
+**Why this matters:** the admin Round Report page at
+`/admin/benchmarks/<module>/round-report` is the canonical artifact
+a non-technical reader uses to understand what each module proposed
+and shipped each round. Every module has its own Round Report page;
+they all read from this file. If the contract drifts, the page
+silently hides your work — readers see "no rounds shipped" when in
+fact you shipped one but the parser couldn't find the version.
 
 ### Step 5 — Dispatch team-statistician + team-conservative AFTER drafting
 
