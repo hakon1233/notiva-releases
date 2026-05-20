@@ -18,6 +18,14 @@ candidate findings for the main worker to consolidate.
 - Env-var defaults — the `${VAR:-DEFAULT}` shape.
 - Repeated literal strings used as enum / state / label tokens.
 - Repeated regex patterns describing the same shape.
+- **Paired user-facing strings** — when two string literals or template
+  literals appear in the same function/component and are clearly paired
+  (e.g. one reports "created N X" and the other "updated N"), check
+  whether both render with the same noun + plural form. A pair where one
+  says `"updated 2"` and the other says `"created 2 tasks"` is a
+  near-certain rendering bug — the user sees one count without context.
+  Cite both lines and flag as MEDIUM. Pairs to look for: created/updated,
+  added/removed, started/finished, opened/closed, success/failure counts.
 
 When two sources of the same fact appear and they disagree, that is almost
 always a bug — regardless of which side is "right." The disagreement IS the
